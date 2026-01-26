@@ -1,107 +1,113 @@
-# Budowanie firmware BadWDSD dla Raspberry Pi Pico / Pico Zero
+# Building BadWDSD Firmware for Raspberry Pi Pico / Pico Zero
 
-Firmware modchipu BadWDSD (wsad do **Raspberry Pi Pico** lub **Pico Zero**) buduje się z katalogu `BadWDSD/` (tego, gdzie leży `build-all.sh`).
+**What it builds:** `.uf2` – firmware for Raspberry Pi Pico / Pico Zero (modchip hardware).
 
-## Wymagania
+**Versions:** [Polski](BUILD_pl.md) | **English**
+
+---
+
+BadWDSD modchip firmware (firmware for **Raspberry Pi Pico** or **Pico Zero**) is built from the `BadWDSD/` directory (the one containing `build-all.sh`).
+
+## Requirements
 
 - **CMake** ≥ 3.13  
-- **GCC ARM**: `arm-none-eabi-gcc` (np. z pakietu `gcc-arm-none-eabi`)  
-- **Python 3** (do PIO/pico_sdk)  
+- **GCC ARM**: `arm-none-eabi-gcc` (e.g., from `gcc-arm-none-eabi` package)  
+- **Python 3** (for PIO/pico_sdk)  
 - **Make**
 
-Instalacja na Debianie/Ubuntu:
+Installation on Debian/Ubuntu:
 
 ```bash
 sudo apt install cmake gcc-arm-none-eabi build-essential python3
 ```
 
-## Szybkie budowanie: tylko Pico Zero
+## Quick build: Pico Zero only
 
 ```bash
-cd BadWDSD    # katalog z build-all.sh, build.sh, pico_sdk
+cd BadWDSD    # directory with build-all.sh, build.sh, pico_sdk
 ./build-zero.sh
 ```
 
-Plik wynikowy: **`out/BadWDSD_SW_x32_Zero.uf2`** – wgraj go na Pico Zero w trybie BOOTSEL (przytrzymaj BOOTSEL, podłącz USB, przeciągnij .uf2).
+Output file: **`out/BadWDSD_SW_x32_Zero.uf2`** – flash it to Pico Zero in BOOTSEL mode (hold BOOTSEL, connect USB, drag & drop the .uf2 file).
 
 ---
 
-## Budowanie wszystkich wersji (`build-all.sh`)
+## Building all versions (`build-all.sh`)
 
 ```bash
 cd BadWDSD
 ./build-all.sh
 ```
 
-Tworzy katalog `out/` z:
+Creates `out/` directory with:
 
-| Plik | Opis |
-|------|------|
-| `BadWDSD_SW_x32.uf2` | Pico (zwykły), tryb SW, XDR x32 |
-| `BadWDSD_SW_x32_Zero.uf2` | **Pico Zero**, tryb SW, XDR x32 |
-| `BadWDSD_CXRF_x16.uf2` | Pico, tryb CXRF, XDR x16 |
+| File | Description |
+|------|-------------|
+| `BadWDSD_SW_x32.uf2` | Regular Pico, SW mode, XDR x32 |
+| `BadWDSD_SW_x32_Zero.uf2` | **Pico Zero**, SW mode, XDR x32 |
+| `BadWDSD_CXRF_x16.uf2` | Regular Pico, CXRF mode, XDR x16 |
 
 ---
 
-## Budowanie wybranej wersji (ręcznie)
+## Building a specific version (manual)
 
-1. Wejdź w katalog z `build.sh`:
+1. Navigate to the directory with `build.sh`:
 
    ```bash
    cd BadWDSD
    ```
 
-2. Przygotuj `Config.h` w `BadWDSD/build/`:
+2. Prepare `Config.h` in `BadWDSD/build/`:
 
    - **Pico Zero (SW, XDR x32):**
      ```bash
      mkdir -p BadWDSD/build
      echo -e '#define PICO_IS_ZERO 1\n#define SC_IS_SW 1\n#define XDR_IS_X32 1' > BadWDSD/build/Config.h
      ```
-   - **Pico zwykły (SW, XDR x32):**
+   - **Regular Pico (SW, XDR x32):**
      ```bash
      mkdir -p BadWDSD/build
      echo -e '#define SC_IS_SW 1\n#define XDR_IS_X32 1' > BadWDSD/build/Config.h
      ```
-   - **Pico (CXRF, XDR x16):**
+   - **Regular Pico (CXRF, XDR x16):**
      ```bash
      mkdir -p BadWDSD/build
      echo '' > BadWDSD/build/Config.h
      ```
 
-3. Uruchom build:
+3. Run the build:
 
    ```bash
    ./build.sh
    ```
 
-4. Plik `.uf2` powstaje w:  
+4. The `.uf2` file will be created at:  
    `BadWDSD/build/BadWDSD.uf2`
 
 ---
 
-## Definicje w `Config.h`
+## Definitions in `Config.h`
 
-- **`PICO_IS_ZERO`** – Pico Zero (inny pinout, LED WS2812, UART itd.)
-- **`SC_IS_SW`** – tryb „software” (57600 Bd)
-- **`XDR_IS_X32`** – XDR 32‑bit (dla 32‑bitowej ścieżki danych)
+- **`PICO_IS_ZERO`** – Pico Zero (different pinout, WS2812 LED, UART, etc.)
+- **`SC_IS_SW`** – "software" mode (57600 baud)
+- **`XDR_IS_X32`** – XDR 32-bit (for 32-bit data path)
 
-Domyślnie `Include.h` dołącza `build/Config.h`; `build-all.sh` i `build-zero.sh` ustawiają to za Ciebie.
-
----
-
-## Flashowanie na Pico Zero
-
-1. Wejdź w tryb BOOTSEL: przytrzymaj **BOOTSEL**, podłącz USB.  
-2. Pico powinien się pojawić jako dysk USB (np. `RPI-RP2`).  
-3. Skopiuj `BadWDSD_SW_x32_Zero.uf2` na ten dysk.  
-4. Po skopiowaniu Pico się zrestartuje z nowym firmware’em.
+By default, `Include.h` includes `build/Config.h`; `build-all.sh` and `build-zero.sh` set this up for you.
 
 ---
 
-## Uwagi
+## Flashing to Pico Zero
 
-- **`pico_sdk`** jest w tym samym katalogu co `build.sh`; `build.sh` ustawia `PICO_SDK_PATH=$PWD/pico_sdk` (przed `cd`), więc nie trzeba go konfigurować ręcznie.  
-- Skrypt `build.sh` wykonuje `cd BadWDSD` (podkatalog z `CMakeLists.txt` i źródłami), potem `mkdir build`, `cd build`, `cmake ..`, `make`.  
-- Przy pierwszym buildzie CMake może ściągnąć/pobudować picotool, pioasm itd. – to normalne.  
-- `build-zero.sh` jest wygodnym skrótem do zbudowania wyłącznie wersji dla Pico Zero.
+1. Enter BOOTSEL mode: hold **BOOTSEL**, connect USB.  
+2. Pico should appear as a USB drive (e.g., `RPI-RP2`).  
+3. Copy `BadWDSD_SW_x32_Zero.uf2` to that drive.  
+4. After copying, Pico will restart with the new firmware.
+
+---
+
+## Notes
+
+- **`pico_sdk`** is in the same directory as `build.sh`; `build.sh` sets `PICO_SDK_PATH=$PWD/pico_sdk` (before `cd`), so you don't need to configure it manually.  
+- The `build.sh` script performs `cd BadWDSD` (subdirectory with `CMakeLists.txt` and sources), then `mkdir build`, `cd build`, `cmake ..`, `make`.  
+- On first build, CMake may download/build picotool, pioasm, etc. – this is normal.  
+- `build-zero.sh` is a convenient shortcut to build only the Pico Zero version.

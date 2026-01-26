@@ -1,3 +1,11 @@
+# Building BadWDSD-Stage (Stagex.bin)
+
+**What it builds:** `Stagex.bin` – main BadWDSD modchip payload, installed on PS3 (NOR flash / MMIO).
+
+**Versions:** **English** | [Polski](BUILD_pl.md)
+
+---
+
 ## First, you need to install below packs:
 
 ```bash

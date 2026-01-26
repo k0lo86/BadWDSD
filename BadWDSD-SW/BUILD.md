@@ -1,5 +1,11 @@
 # PS3 Development Environment Setup
 
+**What it builds:** `.pkg` – installation package for PS3 (used to install Stagex.bin and boot OtherOS).
+
+**Versions:** **English** | [Polski](BUILD_pl.md)
+
+---
+
 ## 1. Download & Preparation
 
 Download the toolchain archive:

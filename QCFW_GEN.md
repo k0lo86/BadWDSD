@@ -1,231 +1,237 @@
-# Generowanie qCFW (quasi-CFW) dla BadWDSD
+# Generating qCFW (quasi-CFW) for BadWDSD
 
-Skrypty `qcfwgen_*.sh` generują różne warianty **qCFW** (quasi-CFW) – persystentnego CFW dla PS3 z modchipem BadWDSD.
+**What it builds:** `CoreOS.bin` – qCFW (quasi-CFW) for PS3 with BadWDSD modchip (persistent CFW).
 
-## Przegląd skryptów
-
-Każdy skrypt generuje **inny typ** instalacji qCFW. **Nie budują tego samego** – wybierz odpowiedni wariant dla swoich potrzeb.
-
-| Skrypt | Typ qCFW | Format lv2_kernel | Użycie |
-|--------|----------|-------------------|--------|
-| `qcfwgen_lv2diff.sh` | `qcfw_lv2diff` | `.diff` (patch) | Podstawowy qCFW z patchem |
-| `qcfwgen_lv2self.sh` | `qcfw_lv2self` | `.self` (pełny kernel) | qCFW z pełnym kernel'em |
-| `qcfwgen_lv2self_pex.sh` | `qcfw_lv2self` | `.self` + `lv2Pkernel.self` | qCFW z PEX (PEX = ?) |
-| `qcfwgen_lv2zdiff.sh` | `qcfw_lv2diff` | `.zdiff` (skompresowany patch) | qCFW z kompresją |
-| `qcfwgen_lv2zfself.sh` | `qcfw_lv2zfself` | `.zfself` (skompresowany fself) | qCFW z pełnym skompresowanym kernel'em |
-| `qcfwgen_petitboot.sh` | `qcfw_petitboot` | Petitboot bootloader | qCFW z OtherOS bootloaderem |
+**Versions:** [Polski](QCFW_GEN_pl.md) | **English**
 
 ---
 
-## Wymagane pliki w `work_dir`
+The `qcfwgen_*.sh` scripts generate different variants of **qCFW** (quasi-CFW) – persistent CFW for PS3 with BadWDSD modchip.
 
-Wszystkie skrypty wymagają katalogu roboczego (`work_dir`) z plikami OFW (Original Firmware):
+## Script Overview
 
-### Wspólne dla wszystkich:
-- **`inros.bin`** – OFW CoreOS (wejściowy)
-- **`lv1.elf.orig`** – OFW lv1 (oryginalny, niezmodyfikowany)
-- **`lv1.elf`** – lv1 (OFW lub spatchowany)
+Each script generates a **different type** of qCFW installation. **They do not build the same thing** – choose the appropriate variant for your needs.
 
-### Specyficzne dla skryptu:
+| Script | qCFW Type | lv2_kernel Format | Usage |
+|--------|----------|-------------------|-------|
+| `qcfwgen_lv2diff.sh` | `qcfw_lv2diff` | `.diff` (patch) | Basic qCFW with patch |
+| `qcfwgen_lv2self.sh` | `qcfw_lv2self` | `.self` (full kernel) | qCFW with full kernel |
+| `qcfwgen_lv2self_pex.sh` | `qcfw_lv2self` | `.self` + `lv2Pkernel.self` | qCFW with PEX (PEX = ?) |
+| `qcfwgen_lv2zdiff.sh` | `qcfw_lv2diff` | `.zdiff` (compressed patch) | qCFW with compression |
+| `qcfwgen_lv2zfself.sh` | `qcfw_lv2zfself` | `.zfself` (compressed fself) | qCFW with full compressed kernel |
+| `qcfwgen_petitboot.sh` | `qcfw_petitboot` | Petitboot bootloader | qCFW with OtherOS bootloader |
+
+---
+
+## Required Files in `work_dir`
+
+All scripts require a working directory (`work_dir`) with OFW (Original Firmware) files:
+
+### Common for all:
+- **`inros.bin`** – OFW CoreOS (input)
+- **`lv1.elf.orig`** – OFW lv1 (original, unmodified)
+- **`lv1.elf`** – lv1 (OFW or patched)
+
+### Script-specific:
 
 #### `qcfwgen_lv2diff.sh`:
 - `lv2_kernel.elf.orig` (OFW)
-- `lv2_kernel.elf` (OFW lub spatchowany)
+- `lv2_kernel.elf` (OFW or patched)
 
 #### `qcfwgen_lv2self.sh`:
-- `lv2_kernel.self` (OFW lub spatchowany)
+- `lv2_kernel.self` (OFW or patched)
 - `lv2_kernel.elf.orig` (OFW)
-- `lv2_kernel.elf` (OFW lub spatchowany)
+- `lv2_kernel.elf` (OFW or patched)
 
 #### `qcfwgen_lv2self_pex.sh`:
-- `lv2_kernel.self` (OFW lub spatchowany)
-- `lv2Pkernel.self` (OFW lub spatchowany)
+- `lv2_kernel.self` (OFW or patched)
+- `lv2Pkernel.self` (OFW or patched)
 - `lv2_kernel.elf.orig` (OFW)
-- `lv2_kernel.elf` (OFW lub spatchowany)
+- `lv2_kernel.elf` (OFW or patched)
 
 #### `qcfwgen_lv2zdiff.sh`:
 - `lv2_kernel.elf.orig` (OFW)
-- `lv2_kernel.elf` (OFW lub spatchowany)
+- `lv2_kernel.elf` (OFW or patched)
 
 #### `qcfwgen_lv2zfself.sh`:
-- `lv2_kernel.elf` (OFW lub spatchowany)
+- `lv2_kernel.elf` (OFW or patched)
 
 #### `qcfwgen_petitboot.sh`:
 - `dtbImage.ps3.bin` (Petitboot bootloader)
 
 ---
 
-## Użycie
+## Usage
 
-### Podstawowa składnia:
+### Basic syntax:
 
 ```bash
 cd /home/kolo/gitlaby/ps3_test/BadWDSD
-./qcfwgen_<typ>.sh <work_dir>
+./qcfwgen_<type>.sh <work_dir>
 ```
 
-Przykład:
+Example:
 
 ```bash
 ./qcfwgen_lv2diff.sh my_qcfw_work
 ```
 
-### Kolejność uruchamiania
+### Execution Order
 
-**Nie trzeba uruchamiać w żadnej kolejności** – każdy skrypt jest **niezależny**. Wybierz jeden skrypt odpowiadający Twojemu przypadkowi użycia.
+**No specific order is required** – each script is **independent**. Choose one script that matches your use case.
 
 ---
 
-## Co robi każdy skrypt
+## What Each Script Does
 
 ### 1. `qcfwgen_lv2diff.sh`
 
-Generuje qCFW z **patchem** lv2_kernel (`.diff`).
+Generates qCFW with lv2_kernel **patch** (`.diff`).
 
-**Proces:**
-1. Buduje Stage payloads (Stage3j, 3ja, 3jz, 5j, 6j)
-2. Buduje narzędzia (coreos_tools, lv1gen, lv2gen)
-3. Ekstrahuje `inros.bin` → `inros/`
-4. Instaluje Stage payloads do `lv1.elf` → `lv1.stage3j3ja3jz5j6j.elf`
-5. Generuje `lv1.diff` (różnica między oryginalnym a spatchowanym lv1)
-6. Generuje `lv2_kernel.diff` (różnica między oryginalnym a spatchowanym lv2_kernel)
-7. Tworzy `outros/` z:
+**Process:**
+1. Builds Stage payloads (Stage3j, 3ja, 3jz, 5j, 6j)
+2. Builds tools (coreos_tools, lv1gen, lv2gen)
+3. Extracts `inros.bin` → `inros/`
+4. Installs Stage payloads to `lv1.elf` → `lv1.stage3j3ja3jz5j6j.elf`
+5. Generates `lv1.diff` (difference between original and patched lv1)
+6. Generates `lv2_kernel.diff` (difference between original and patched lv2_kernel)
+7. Creates `outros/` with:
    - `lv1.diff`
    - `lv2_kernel.diff`
    - SPU loaders (`myappldr.elf`, `mylv2ldr.elf`)
-8. Generuje `CoreOS.bin` z `outros/`
+8. Generates `CoreOS.bin` from `outros/`
 
-**Wynik:** `CoreOS.bin` z typem `qcfw_lv2diff`
+**Output:** `CoreOS.bin` with type `qcfw_lv2diff`
 
 ---
 
 ### 2. `qcfwgen_lv2self.sh`
 
-Generuje qCFW z **pełnym** lv2_kernel (`.self`).
+Generates qCFW with **full** lv2_kernel (`.self`).
 
-**Różnice względem `lv2diff`:**
-- Używa `Stage2j.bin` (dodatkowy stage)
-- Buduje `zgen` (kompresor)
-- Generuje `lv2_kernel.zdiff` (skompresowany diff)
-- Kopiuje `lv2_kernel.self` do `outros/` (zamiast diff)
-- Usuwa `hdd_copy.self` z outros (w `lv2diff` jest zakomentowane)
+**Differences from `lv2diff`:**
+- Uses `Stage2j.bin` (additional stage)
+- Builds `zgen` (compressor)
+- Generates `lv2_kernel.zdiff` (compressed diff)
+- Copies `lv2_kernel.self` to `outros/` (instead of diff)
+- Removes `hdd_copy.self` from outros (commented out in `lv2diff`)
 
-**Wynik:** `CoreOS.bin` z typem `qcfw_lv2self`
+**Output:** `CoreOS.bin` with type `qcfw_lv2self`
 
 ---
 
 ### 3. `qcfwgen_lv2self_pex.sh`
 
-Jak `lv2self`, ale dodatkowo kopiuje **`lv2Pkernel.self`** do `outros/`.
+Like `lv2self`, but additionally copies **`lv2Pkernel.self`** to `outros/`.
 
-**Różnice:**
-- Kopiuje `lv2Pkernel.self` do `outros/lv2Pkernel.self`
-- Usuwa `hdd_copy.self` (nie jest zakomentowane)
+**Differences:**
+- Copies `lv2Pkernel.self` to `outros/lv2Pkernel.self`
+- Removes `hdd_copy.self` (not commented out)
 
-**PEX** prawdopodobnie oznacza jakiś specjalny tryb/wariant kernel'a.
+**PEX** likely means some special mode/variant of the kernel.
 
-**Wynik:** `CoreOS.bin` z typem `qcfw_lv2self` (z PEX)
+**Output:** `CoreOS.bin` with type `qcfw_lv2self` (with PEX)
 
 ---
 
 ### 4. `qcfwgen_lv2zdiff.sh`
 
-Generuje qCFW z **skompresowanym** patchem (`.zdiff`).
+Generates qCFW with **compressed** patch (`.zdiff`).
 
-**Różnice względem `lv2diff`:**
-- Używa `Stage2j.bin`
-- Buduje `zgen`
-- Generuje `lv2_kernel.zdiff` (skompresowany diff) zamiast zwykłego `.diff`
-- Kopiuje `lv2_kernel.zdiff` do `outros/` (zamiast `.diff`)
+**Differences from `lv2diff`:**
+- Uses `Stage2j.bin`
+- Builds `zgen`
+- Generates `lv2_kernel.zdiff` (compressed diff) instead of plain `.diff`
+- Copies `lv2_kernel.zdiff` to `outros/` (instead of `.diff`)
 
-**Wynik:** `CoreOS.bin` z typem `qcfw_lv2diff` (skompresowany)
+**Output:** `CoreOS.bin` with type `qcfw_lv2diff` (compressed)
 
 ---
 
 ### 5. `qcfwgen_lv2zfself.sh`
 
-Generuje qCFW z **skompresowanym fself** (`.zfself`).
+Generates qCFW with **compressed fself** (`.zfself`).
 
-**Proces:**
-1. Buduje Stage payloads (Stage2j, 3j, 3ja, **4j**, 5j, 6j) – używa `Stage4j` zamiast `3jz`
-2. Buduje narzędzia (coreos_tools, lv1gen, **zgen**, **dtbImage_ps3_bin_to_elf**)
-3. Instaluje Stage do lv1 z `lv1gen_4j` (zamiast `lv1gen_3jz`)
-4. Generuje `lv2_kernel.zelf` (skompresowany ELF)
-5. Generuje `lv2_kernel.zzelf` (konwersja dtbImage)
-6. **Wymaga ręcznego wykonania:** `make_fself -u lv2_kernel.zzelf lv2_kernel.zfself`
-7. Kopiuje `lv2_kernel.zfself` jako `lv2_kernel.self` do `outros/`
+**Process:**
+1. Builds Stage payloads (Stage2j, 3j, 3ja, **4j**, 5j, 6j) – uses `Stage4j` instead of `3jz`
+2. Builds tools (coreos_tools, lv1gen, **zgen**, **dtbImage_ps3_bin_to_elf**)
+3. Installs Stage to lv1 with `lv1gen_4j` (instead of `lv1gen_3jz`)
+4. Generates `lv2_kernel.zelf` (compressed ELF)
+5. Generates `lv2_kernel.zzelf` (dtbImage conversion)
+6. **Requires manual execution:** `make_fself -u lv2_kernel.zzelf lv2_kernel.zfself`
+7. Copies `lv2_kernel.zfself` as `lv2_kernel.self` to `outros/`
 
-**Wynik:** `CoreOS.bin` z typem `qcfw_lv2zfself`
+**Output:** `CoreOS.bin` with type `qcfw_lv2zfself`
 
 ---
 
 ### 6. `qcfwgen_petitboot.sh`
 
-Generuje qCFW z **Petitboot bootloaderem** (OtherOS).
+Generates qCFW with **Petitboot bootloader** (OtherOS).
 
-**Proces:**
-1. Buduje Stage payloads (Stage2j, 3j, 3ja, **4j**, 5j, 6j)
-2. Buduje narzędzia (coreos_tools, lv1gen, **zgen**, **dtbImage_ps3_bin_to_elf**)
-3. Instaluje Stage do lv1 z `lv1gen_4j`
-4. **Usuwa więcej plików** z `outros/`:
+**Process:**
+1. Builds Stage payloads (Stage2j, 3j, 3ja, **4j**, 5j, 6j)
+2. Builds tools (coreos_tools, lv1gen, **zgen**, **dtbImage_ps3_bin_to_elf**)
+3. Installs Stage to lv1 with `lv1gen_4j`
+4. **Removes more files** from `outros/`:
    - `hdd_copy.self`
    - `emer_init.self`
    - `eurus_fw.bin`
    - `me_iso_for_ps2emu.self`
    - `sv_iso_for_ps2emu.self`
-5. Konwertuje `dtbImage.ps3.bin` → `.elf` → `.zelf` → `.zzelf`
-6. **Wymaga ręcznego wykonania:** `make_fself -u dtbImage.ps3.zzelf dtbImage.ps3.zfself`
-7. Kopiuje `dtbImage.ps3.zfself` jako `lv2_kernel.self` do `outros/`
+5. Converts `dtbImage.ps3.bin` → `.elf` → `.zelf` → `.zzelf`
+6. **Requires manual execution:** `make_fself -u dtbImage.ps3.zzelf dtbImage.ps3.zfself`
+7. Copies `dtbImage.ps3.zfself` as `lv2_kernel.self` to `outros/`
 
-**Wynik:** `CoreOS.bin` z typem `qcfw_petitboot` – konsola zawsze bootuje do Petitboot (OtherOS)
+**Output:** `CoreOS.bin` with type `qcfw_petitboot` – console always boots to Petitboot (OtherOS)
 
 ---
 
-## Który skrypt wybrać?
+## Which Script to Choose?
 
-| Potrzeba | Skrypt |
-|----------|--------|
-| Podstawowy qCFW (patch) | `qcfwgen_lv2diff.sh` |
-| qCFW z pełnym kernel'em | `qcfwgen_lv2self.sh` |
-| qCFW z PEX | `qcfwgen_lv2self_pex.sh` |
-| qCFW z kompresją (patch) | `qcfwgen_lv2zdiff.sh` |
-| qCFW z kompresją (pełny kernel) | `qcfwgen_lv2zfself.sh` |
+| Need | Script |
+|------|--------|
+| Basic qCFW (patch) | `qcfwgen_lv2diff.sh` |
+| qCFW with full kernel | `qcfwgen_lv2self.sh` |
+| qCFW with PEX | `qcfwgen_lv2self_pex.sh` |
+| qCFW with compression (patch) | `qcfwgen_lv2zdiff.sh` |
+| qCFW with compression (full kernel) | `qcfwgen_lv2zfself.sh` |
 | OtherOS / Petitboot | `qcfwgen_petitboot.sh` |
 
 ---
 
-## Uwagi
+## Notes
 
-1. **Wszystkie skrypty** budują najpierw:
+1. **All scripts** first build:
    - `BadWDSD-Stage` (payloads)
    - `tools/coreos_tools`
    - `tools/lv1gen`
-   - `tools/lv2gen` (jeśli potrzebne)
-   - `tools/zgen` (jeśli potrzebne)
+   - `tools/lv2gen` (if needed)
+   - `tools/zgen` (if needed)
 
-2. **Interaktywne pauzy:**
-   - Większość skryptów ma `read -p "Modify outros now then press ENTER to continue"` – możesz edytować `outros/` przed finalnym buildem
-   - `qcfwgen_lv2zfself.sh` i `qcfwgen_petitboot.sh` wymagają ręcznego wykonania `make_fself`
+2. **Interactive pauses:**
+   - Most scripts have `read -p "Modify outros now then press ENTER to continue"` – you can edit `outros/` before final build
+   - `qcfwgen_lv2zfself.sh` and `qcfwgen_petitboot.sh` require manual execution of `make_fself`
 
-3. **Wynik:** Wszystkie generują `CoreOS.bin` w `work_dir/` – to jest plik do instalacji na PS3.
+3. **Output:** All generate `CoreOS.bin` in `work_dir/` – this is the file to install on PS3.
 
-4. **SPU loaders:** Wszystkie kopiują `spu/myappldr/myappldr.elf` i `spu/mylv2ldr/mylv2ldr.elf` do `outros/`.
+4. **SPU loaders:** All copy `spu/myappldr/myappldr.elf` and `spu/mylv2ldr/mylv2ldr.elf` to `outros/`.
 
-5. **Plik `qcfw`:** Każdy skrypt tworzy `outros/qcfw` z typem qCFW (np. `"qcfw_lv2diff"`).
+5. **`qcfw` file:** Each script creates `outros/qcfw` with qCFW type (e.g., `"qcfw_lv2diff"`).
 
 ---
 
-## Przykład użycia
+## Usage Example
 
 ```bash
-# Przygotuj work_dir z plikami OFW
+# Prepare work_dir with OFW files
 mkdir -p my_qcfw
 cd my_qcfw
-# Skopiuj tu: inros.bin, lv1.elf.orig, lv1.elf, lv2_kernel.elf.orig, lv2_kernel.elf
+# Copy here: inros.bin, lv1.elf.orig, lv1.elf, lv2_kernel.elf.orig, lv2_kernel.elf
 
-# Wygeneruj qCFW
+# Generate qCFW
 cd ..
 ./qcfwgen_lv2diff.sh my_qcfw
 
-# Wynik: my_qcfw/CoreOS.bin
+# Output: my_qcfw/CoreOS.bin
 ```
