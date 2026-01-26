@@ -2,6 +2,25 @@
 
 ![firefox_A71vZ02dDF](https://github.com/user-attachments/assets/0287c52b-2bc0-4ac3-ac79-802790cfb90b)
 
+## 📚 Build Documentation
+
+### Hardware Firmware (Modchip)
+- **[BadWDSD/BUILD.md](BadWDSD/BUILD.md)** (English) | **[BadWDSD/BUILD_pl.md](BadWDSD/BUILD_pl.md)** (Polski)  
+  → Builds **`.uf2`** firmware for Raspberry Pi Pico / Pico Zero (modchip hardware)
+
+### Software Payloads
+- **[BadWDSD-Stage/BUILD.md](BadWDSD-Stage/BUILD.md)** (English) | **[BadWDSD-Stage/BUILD_pl.md](BadWDSD-Stage/BUILD_pl.md)** (Polski)  
+  → Builds **`Stagex.bin`** – main BadWDSD modchip payload (installed on PS3 NOR flash / MMIO)
+
+- **[BadWDSD-SW/BUILD.md](BadWDSD-SW/BUILD.md)** (English) | **[BadWDSD-SW/BUILD_pl.md](BadWDSD-SW/BUILD_pl.md)** (Polski)  
+  → Builds **`.pkg`** installation package for PS3 (used to install Stagex.bin and boot OtherOS)
+
+### qCFW (Quasi-CFW)
+- **[QCFW_GEN.md](QCFW_GEN.md)** (English) | **[QCFW_GEN_pl.md](QCFW_GEN_pl.md)** (Polski)  
+  → Generates **`CoreOS.bin`** – qCFW (quasi-CFW) for PS3 with BadWDSD modchip (persistent CFW)
+
+---
+
 This is a **hardware modchip** for Sony Playstation 3. By abusing a "feature" called **WDSD** serial register inside XDR ram. We can override what data to be written to memory through serial pin (32 bytes max). But not where and when.
 So if we do it while first boot loader (bootldr/lv0ldr) is decrypting lv0 (second boot loader) and writing decrypted data to memory. In reality, our code will be written to memory instead.
 If it hit address **0x100 (Reset vector)**, when PPU core starts our code will get executed instead. Gaining custom code execution very early on.
