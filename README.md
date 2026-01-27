@@ -1,5 +1,26 @@
 # BadWDSD
 
+---
+
+## 📚 Build Documentation
+
+### Hardware Firmware (Modchip)
+- **[BadWDSD/BUILD.md](BadWDSD/BUILD.md)** (English) | **[BadWDSD/BUILD_pl.md](BadWDSD/BUILD_pl.md)** (Polski)  
+  → Builds **`.uf2`** firmware for Raspberry Pi Pico / Pico Zero (modchip hardware)
+
+### Software Payloads
+- **[BadWDSD-Stage/BUILD.md](BadWDSD-Stage/BUILD.md)** (English) | **[BadWDSD-Stage/BUILD_pl.md](BadWDSD-Stage/BUILD_pl.md)** (Polski)  
+  → Builds **`Stagex.bin`** – main BadWDSD modchip payload (installed on PS3 NOR flash / MMIO)
+
+- **[BadWDSD-SW/BUILD.md](BadWDSD-SW/BUILD.md)** (English) | **[BadWDSD-SW/BUILD_pl.md](BadWDSD-SW/BUILD_pl.md)** (Polski)  
+  → Builds **`.pkg`** installation package for PS3 (used to install Stagex.bin and boot OtherOS)
+
+### qCFW (Quasi-CFW)
+- **[QCFW_GEN.md](QCFW_GEN.md)** (English) | **[QCFW_GEN_pl.md](QCFW_GEN_pl.md)** (Polski)  
+  → Generates **`CoreOS.bin`** – qCFW (quasi-CFW) for PS3 with BadWDSD modchip (persistent CFW)
+
+---
+
 This is a hardware modchip for **Sony PlayStation 3**. By using **Raspberry Pi Pico (RP2040)**, It is possible for non-CFW compatible models to boot **qCFW**.
 
 # Supported models
