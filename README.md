@@ -1,5 +1,7 @@
 # BadWDSD
 
+**Versions:** [Polski](README_pl.md) | **English**
+
 ---
 
 ## 📚 Build Documentation
