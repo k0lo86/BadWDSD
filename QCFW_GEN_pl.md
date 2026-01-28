@@ -66,7 +66,7 @@ Wszystkie skrypty wymagają katalogu roboczego (`work_dir`) z plikami OFW (Origi
 ### Podstawowa składnia:
 
 ```bash
-cd /home/kolo/gitlaby/ps3_test/BadWDSD
+cd /<your_dir>/BadWDSD
 ./qcfwgen_<typ>.sh <work_dir>
 ```
 

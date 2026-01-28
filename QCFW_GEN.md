@@ -66,7 +66,7 @@ All scripts require a working directory (`work_dir`) with OFW (Original Firmware
 ### Basic syntax:
 
 ```bash
-cd /home/kolo/gitlaby/ps3_test/BadWDSD
+cd /<your_dir>/BadWDSD
 ./qcfwgen_<type>.sh <work_dir>
 ```
 
