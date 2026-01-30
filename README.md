@@ -72,9 +72,9 @@ then download [qCFW](https://github.com/aomsin2526/BadWDSD/releases) and extract
 
 <img width="617" height="174" alt="explorer_71wt3KBo5T" src="https://github.com/user-attachments/assets/b63da1b3-3982-4703-b07b-8ae8b209349a" />
 
-2. Install **HEN 3.4.1 or later**
+2. Install **PS3HEN 3.4.1 or later**
 3. Plug your USB drive into **RIGHTMOST** USB port of your ps3
-4. On XMB, Enable HEN then use **Network -> Hybrid Firmware Tools -> QCFW Installer -> Install Stagex** option. It must show **Success**
+4. On XMB, Enable HEN then use **Network -> Hybrid Firmware Tools -> qCFW Options -> Install Stagex** option. It must show **Success**
 5. If not already, Install the modchip by following **Installation (Hardware)** section
 6. After modchip installed and power plugged in, wait until LED of modchip becomes solid. If it doesn't solid after a while, check **SC_RX/SC_TX** wire
 7. Turn on the console. modchip LED should flash briefly with triple beep right after. This means exploit is successful. If your console keep turning off and on, check **CMD/CLK** wire and **Stagex**
@@ -89,6 +89,8 @@ From now on, modchip will be required to boot the console until you go back to O
 This can be done by reinstalling OFW/HFW firmware normally. Then after this you can disable or uninstall the modchip
 
 If thing goes too bad to the point of not being able to enter safe mode at all, you can use **BANKSEL** pin instead.
+
+If you flashed bad **Stagex.bin** or **CoreOS.bin**, see **Recover from bad Stagex.bin or CoreOS.bin flash** section.
 
 # Installation (Hardware)
 
@@ -179,12 +181,18 @@ If you want to uninstall the modchip, you can do so after this
 
 **Avoid this unless absolutely needed.**
 
+**DO NOT GO STRAIGHT TO THIS PIN WITHOUT TRYING TO BOOT THE CONSOLE WITHOUT MODCHIP FIRST!, IF IT SHUT IFSELF OFF, THEN YOU CAN FOLLOW BELOW**
+
 1. Unplug your console
 2. Short **BANKSEL** pin to ground
 3. Plug in your console, wait until modchip LED flashes very fast. Then it is successful. You can't turn on the console while this pin is shorted
-4. Unplug your console and unshort the pin. **If necessary** remove or use HOLD pin to disable the modchip
+4. Unplug your console and unshort the pin. **If necessary** remove or use **HOLD** pin to disable the modchip
 5. Plug in your console again and turn it on, you will likely to get black screen. This is expected since dev_flash is still qCFW but you're on OFW now
 6. Enter safe mode and reinstall firmware normally to get full recovery
+
+# Recover from bad Stagex.bin or CoreOS.bin flash
+
+No worries, your console isn't really bricked. **FIRST, disable the modchip then try to boot the console if it boots then all is good.** If it shut itself off, Simply follow **Go back to OFW using BANKSEL pin** section above. But this time disable modchip before boot as well.
 
 # Downgrading
 
