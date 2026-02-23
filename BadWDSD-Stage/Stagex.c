@@ -1,3 +1,13 @@
+#pragma GCC optimize("align-functions=8")
+#pragma GCC diagnostic ignored "-Wunused-function"
+
+#define FUNC_DECL __attribute__((section("code")))
+#define FUNC_DEF FUNC_DECL
+
+// branch code
+#define FUNC_DECL_NONSTATIC __attribute__((section("bcode")))
+#define FUNC_DEF_NONSTATIC FUNC_DECL_NONSTATIC
+
 #define SC_PUTS_BUFFER_ENABLED 1
 
 //#define LOGGING_ENABLED 1
@@ -8,15 +18,11 @@
 #define ZLIB_SPU_ONLY_ENABLED 1
 #define STAGE0_DECRYPTLV0SELF_SPU_ENABLED 1
 
-#pragma GCC optimize("align-functions=8")
-#pragma GCC diagnostic ignored "-Wunused-function"
+//#define DECRYPTLV2SELF_ENABLED 1
 
-#define FUNC_DECL __attribute__((section("code")))
-#define FUNC_DEF FUNC_DECL
-
-// branch code
-#define FUNC_DECL_NONSTATIC __attribute__((section("bcode")))
-#define FUNC_DEF_NONSTATIC FUNC_DECL_NONSTATIC
+#if DECRYPTLV2SELF_ENABLED
+#define AES_ENABLED 1
+#endif
 
 typedef char int8_t;
 typedef unsigned char uint8_t;
@@ -57,9 +63,6 @@ typedef uint64_t uintptr_t;
 
 FUNC_DECL void dead();
 
-FUNC_DECL void intr_disable();
-FUNC_DECL void intr_enable();
-
 FUNC_DECL uint64_t GetTimeInNs();
 FUNC_DECL void WaitInNs(uint64_t ns);
 
@@ -97,28 +100,29 @@ struct sc_real_packet_header_s
     uint16_t payload_size[2];
 };
 
-FUNC_DECL uint16_t sc_real_packet_header_calc_cksum(struct sc_real_packet_header_s *pkt_hdr);
+FUNC_DECL uint16_t sc_real_packet_header_calc_cksum(const struct sc_real_packet_header_s *pkt_hdr);
 
 FUNC_DECL void sc_send_packet(const struct sc_packet_s *in, struct sc_packet_s *out);
 
 FUNC_DECL void sc_triple_beep();
 FUNC_DECL void sc_continuous_beep();
 
+FUNC_DECL void sc_soft_restart();
 FUNC_DECL void sc_hard_restart();
 
 FUNC_DECL void puts(const char *str);
 
 FUNC_DECL void print_hex(uint64_t v);
 
-//
+// reserve register...
 
-register uint64_t r13 asm("r13");
-register uint64_t r14 asm("r14");
-register uint64_t r15 asm("r15");
-register uint64_t r16 asm("r16");
+//register uint64_t r13 asm("r13");
+//register uint64_t r14 asm("r14");
+//register uint64_t r15 asm("r15");
+//register uint64_t r16 asm("r16");
 
-register uint64_t r23 asm("r23");
-register uint64_t r24 asm("r24");
+//register uint64_t r23 asm("r23");
+//register uint64_t r24 asm("r24");
 
 register uint64_t is_lv1 asm("r17"); // 0x9669, 0x9666 (stage5)
 register uint64_t lv1_rtoc asm("r18");
@@ -129,7 +133,7 @@ register uint64_t stage_rtoc asm("r20");
 register uint64_t stage_sp asm("r21");
 register uint64_t stage_zero asm("r22");
 
-register uint64_t interrupt_depth asm("r26");
+//
 
 struct Stagex_Context_s
 {
@@ -155,7 +159,7 @@ FUNC_DEF struct Stagex_Context_s* GetStagexContext()
 
 FUNC_DEF uint8_t IsLv1()
 {
-    return (is_lv1 == 0x9669) || (is_lv1 == 0x9666) ? 1 : 0;
+    return ((is_lv1 == 0x9669) || (is_lv1 == 0x9666)) ? 1 : 0;
 }
 
 FUNC_DEF uint8_t IsStage5()
@@ -533,24 +537,62 @@ FUNC_DEF void memset(void *buf, uint8_t v, uint64_t count)
 {
     if ((((uint64_t)buf % 8) == 0) && ((count % 8) == 0))
     {
+        uint64_t vv = 0;
+
+        if (v != 0)
+        {
+            uint64_t v64 = v;
+
+            vv |= (v64 << 56);
+            vv |= (v64 << 48);
+            vv |= (v64 << 40);
+            vv |= (v64 << 32);
+            vv |= (v64 << 24);
+            vv |= (v64 << 16);
+            vv |= (v64 << 8);
+            vv |= v64;
+        }
+
         uint64_t *buff = (uint64_t *)buf;
 
         for (uint64_t i = 0; i < (count / 8); ++i)
-            buff[i] = v;
+            buff[i] = vv;
     }
     else if ((((uint64_t)buf % 4) == 0) && ((count % 4) == 0))
     {
+        uint32_t vv = 0;
+
+        if (v != 0)
+        {
+            uint32_t v32 = v;
+
+            vv |= (v32 << 24);
+            vv |= (v32 << 16);
+            vv |= (v32 << 8);
+            vv |= v32;
+        }
+
         uint32_t *buff = (uint32_t *)buf;
 
         for (uint64_t i = 0; i < (count / 4); ++i)
-            buff[i] = v;
+            buff[i] = vv;
     }
     else if ((((uint64_t)buf % 2) == 0) && ((count % 2) == 0))
     {
+        uint16_t vv = 0;
+
+        if (v != 0)
+        {
+            uint16_t v16 = v;
+
+            vv |= (v16 << 8);
+            vv |= v16;
+        }
+
         uint16_t *buff = (uint16_t *)buf;
 
         for (uint64_t i = 0; i < (count / 2); ++i)
-            buff[i] = v;
+            buff[i] = vv;
     }
     else
     {
@@ -685,9 +727,9 @@ FUNC_DEF uint8_t SearchAndReplace(void *in_data, uint64_t dataSize, const void *
     return 0;
 }
 
-FUNC_DEF uint8_t SearchMemory(void *in_data, uint64_t dataSize, const void *in_searchData, uint64_t searchDataSize, uint64_t *outFoundAddr)
+FUNC_DEF uint8_t SearchMemory(const void *in_data, uint64_t dataSize, const void *in_searchData, uint64_t searchDataSize, uint64_t *outFoundAddr)
 {
-    uint8_t *data = (uint8_t *)in_data;
+    const uint8_t *data = (const uint8_t *)in_data;
 
     const uint8_t *searchData = (const uint8_t *)in_searchData;
 
@@ -709,7 +751,7 @@ FUNC_DEF uint8_t SearchMemory(void *in_data, uint64_t dataSize, const void *in_s
     return 0;
 }
 
-FUNC_DEF uint16_t sc_real_packet_header_calc_cksum(struct sc_real_packet_header_s *pkt_hdr)
+FUNC_DEF uint16_t sc_real_packet_header_calc_cksum(const struct sc_real_packet_header_s *pkt_hdr)
 {
     uint8_t *ptr;
     uint32_t sum;
@@ -722,7 +764,7 @@ FUNC_DEF uint16_t sc_real_packet_header_calc_cksum(struct sc_real_packet_header_
 
     sum += 0x8000;
 
-    return sum & 0xffff;
+    return (sum & 0xffff);
 }
 
 FUNC_DEF void sc_send_packet(const struct sc_packet_s *in, struct sc_packet_s *out)
@@ -732,9 +774,6 @@ FUNC_DEF void sc_send_packet(const struct sc_packet_s *in, struct sc_packet_s *o
         // printf("payload too big!\n");
         dead();
     }
-
-    //if (IsLv1())
-        //intr_disable();
 
     // 0x24000000000
     uint64_t sb_base_addr = 0x24;
@@ -947,9 +986,6 @@ FUNC_DEF void sc_send_packet(const struct sc_packet_s *in, struct sc_packet_s *o
             }
         }
     }
-
-    //if (IsLv1())
-        //intr_enable();
 }
 
 FUNC_DEF void sc_triple_beep()
@@ -994,6 +1030,23 @@ FUNC_DEF void sc_continuous_beep()
 
     pkt.data[6] = 0x0f;
     pkt.data[7] = 0xff;
+
+    sc_send_packet(&pkt, NULL);
+}
+
+FUNC_DEF void sc_soft_restart()
+{
+    struct sc_packet_s pkt;
+
+    pkt.service_id = 0x13;
+    pkt.communication_tag = 1;
+
+    pkt.payload_size = 4;
+
+    pkt.data[0] = 0x11;
+    pkt.data[1] = 0x00;
+    pkt.data[2] = 0x00;
+    pkt.data[3] = 0x01;
 
     sc_send_packet(&pkt, NULL);
 }
@@ -1214,6 +1267,26 @@ FUNC_DEF void sc_write_request_os_bank_indicator(uint8_t val)
     sc_write_eeprom8(0x20, 0x2, val);
 }
 
+FUNC_DEF void sc_query_system_power_up_cause(uint64_t* outCause) // [2]
+{
+    struct sc_packet_s pkt;
+
+    pkt.service_id = 0x13;
+    pkt.communication_tag = 1;
+
+    pkt.payload_size = 1;
+    pkt.data[0] = 0x10;
+
+    struct sc_packet_s outpkt;
+    sc_send_packet(&pkt, &outpkt);
+
+    if (outpkt.payload_size != 16)
+        dead();
+
+    if (outCause != NULL)
+        memcpy(outCause, outpkt.data, 16);
+}
+
 FUNC_DEF void real_puts(const char *str)
 {
     if (!IsLogEnabled())
@@ -1429,7 +1502,7 @@ FUNC_DEF void XdrRegWrite(uint32_t data)
     eieio();
 }
 
-uint64_t calc_myspu_id()
+FUNC_DEF uint64_t calc_myspu_id()
 {
     uint8_t found = 0;
     uint64_t myspu_id = 0;
@@ -1478,14 +1551,14 @@ FUNC_DEF uint8_t CoreOS_FindFileEntry(uint64_t startAddress, const char *fileNam
 {
     uint64_t curAddress = startAddress;
 
-    struct coreos_header_s *header = (struct coreos_header_s *)curAddress;
+    const struct coreos_header_s *header = (const struct coreos_header_s *)curAddress;
     curAddress += sizeof(struct coreos_header_s);
 
     uint32_t entry_count = header->entry_count;
 
     for (uint32_t i = 0; i < entry_count; ++i)
     {
-        struct coreos_entry_s *entry = (struct coreos_entry_s *)curAddress;
+        const struct coreos_entry_s *entry = (const struct coreos_entry_s *)curAddress;
         curAddress += sizeof(struct coreos_entry_s);
 
         // puts(entry->file_name);
@@ -1508,19 +1581,6 @@ FUNC_DEF uint8_t CoreOS_FindFileEntry(uint64_t startAddress, const char *fileNam
 
 FUNC_DEF uint8_t CoreOS_FindFileEntry_Bank(uint8_t os_bank_indicator, const char *fileName, uint64_t *outFileAddress, uint64_t *outFileSize)
 {
-#if 0
-
-    puts("os_bank_indicator = ");
-    print_hex(os_bank_indicator);
-    puts("\n");
-
-    if (os_bank_indicator == 0xff)
-        puts("Will use ros0\n");
-    else
-        puts("Will use ros1\n");
-
-#endif
-
     uint64_t coreOSStartAddress = (os_bank_indicator == 0xff) ? 0x2401F0C0000 : 0x2401F7C0000;
 
     return CoreOS_FindFileEntry(coreOSStartAddress, fileName, outFileAddress, outFileSize);
@@ -1647,9 +1707,9 @@ struct ElfPhdr32_s
 
 FUNC_DEF void LoadElf(uint64_t elfFileAddress, uint64_t destAddressOffset, uint8_t doZero)
 {
-    struct ElfHeader_s *elfHdr = (struct ElfHeader_s *)elfFileAddress;
+    const struct ElfHeader_s *elfHdr = (const struct ElfHeader_s *)elfFileAddress;
 
-    if (*((uint32_t *)elfHdr->e_ident) != 0x7F454C46)
+    if (*((const uint32_t *)elfHdr->e_ident) != 0x7F454C46)
     {
         puts("LoadElf e_ident check failed!\n");
         dead();
@@ -1667,7 +1727,7 @@ FUNC_DEF void LoadElf(uint64_t elfFileAddress, uint64_t destAddressOffset, uint8
     print_hex(elfHdr->e_phnum);
     puts("\n");
 
-    struct ElfPhdr_s *phdr = (struct ElfPhdr_s *)(elfFileAddress + elfHdr->e_phoff);
+    const struct ElfPhdr_s *phdr = (const struct ElfPhdr_s *)(elfFileAddress + elfHdr->e_phoff);
 
     for (uint16_t i = 0; i < elfHdr->e_phnum; ++i)
     {
@@ -1762,8 +1822,10 @@ struct SceMetaKey_s
     uint64_t key[2];
 };
 
+#if AES_ENABLED
 // can't compile as seperate files because of global registers
 #include "Aes/Aes.c"
+#endif
 
 #if !STAGE0_DECRYPTLV0SELF_SPU_ENABLED
 
@@ -1887,7 +1949,7 @@ FUNC_DEF void DecryptLv0Self(void *inDest, const void *inSrc, uint8_t use_spu)
 
     );
 
-    struct SceMetaHeader_s *metaHeader = (struct SceMetaHeader_s *)&metasBuf[0];
+    const struct SceMetaHeader_s *metaHeader = (const struct SceMetaHeader_s *)&metasBuf[0];
 
     //puts("metaHeader:\n");
 
@@ -1899,13 +1961,13 @@ FUNC_DEF void DecryptLv0Self(void *inDest, const void *inSrc, uint8_t use_spu)
     //print_decimal(metaHeader->key_entry_num);
     //puts("\n");
 
-    struct SceMetaSectionHeader_s *metaSectionHeaders = (struct SceMetaSectionHeader_s *)&metasBuf[sizeof(struct SceMetaHeader_s)];
+    const struct SceMetaSectionHeader_s *metaSectionHeaders = (const struct SceMetaSectionHeader_s *)&metasBuf[sizeof(struct SceMetaHeader_s)];
 
 #if 0
 
     for (uint32_t i = 0; i < (metaHeader->section_entry_num); ++i)
     {
-        struct SceMetaSectionHeader_s *h = &metaSectionHeaders[i];
+        const struct SceMetaSectionHeader_s *h = &metaSectionHeaders[i];
 
         puts("section_headers[");
         print_decimal(i);
@@ -1934,13 +1996,13 @@ FUNC_DEF void DecryptLv0Self(void *inDest, const void *inSrc, uint8_t use_spu)
 
 #endif
 
-    struct SceMetaKey_s *metaKeys = (struct SceMetaKey_s *)&metasBuf[sizeof(struct SceMetaHeader_s) + ((metaHeader->section_entry_num) * sizeof(struct SceMetaSectionHeader_s))];
+    const struct SceMetaKey_s *metaKeys = (const struct SceMetaKey_s *)&metasBuf[sizeof(struct SceMetaHeader_s) + ((metaHeader->section_entry_num) * sizeof(struct SceMetaSectionHeader_s))];
 
 #if 0
 
     for (uint32_t i = 0; i < (metaHeader->key_entry_num); ++i)
     {
-        struct SceMetaKey_s *k = &metaKeys[i];
+        const struct SceMetaKey_s *k = &metaKeys[i];
 
         puts("keys[");
         print_decimal(i);
@@ -1957,12 +2019,12 @@ FUNC_DEF void DecryptLv0Self(void *inDest, const void *inSrc, uint8_t use_spu)
 
 #endif
 
-    struct ElfHeader_s *elfHeader = (struct ElfHeader_s *)&src[0x90];
+    const struct ElfHeader_s *elfHeader = (const struct ElfHeader_s *)&src[0x90];
 
     memcpy(dest, elfHeader, sizeof(struct ElfHeader_s));
     memcpy(dest + (elfHeader->e_phoff), &src[0x90 + (elfHeader->e_phoff)], (elfHeader->e_phentsize) * (elfHeader->e_phnum));
 
-    struct ElfPhdr_s *elfPhdrs = (struct ElfPhdr_s *)(dest + (elfHeader->e_phoff));
+    const struct ElfPhdr_s *elfPhdrs = (const struct ElfPhdr_s *)(dest + (elfHeader->e_phoff));
 
     uint64_t spu_id = calc_myspu_id();
     uint64_t spu_old_mfc_sr1;
@@ -1972,16 +2034,16 @@ FUNC_DEF void DecryptLv0Self(void *inDest, const void *inSrc, uint8_t use_spu)
 
     for (uint16_t i = 0; i < (elfHeader->e_phnum); ++i)
     {
-        struct ElfPhdr_s *phdr = &elfPhdrs[i];
+        const struct ElfPhdr_s *phdr = &elfPhdrs[i];
 
         puts("decrypting phdr ");
         print_decimal(i);
         puts("...\n");
 
-        struct SceMetaSectionHeader_s *h = &metaSectionHeaders[i];
+        const struct SceMetaSectionHeader_s *h = &metaSectionHeaders[i];
 
-        struct SceMetaKey_s *key = &metaKeys[(h->key_idx)];
-        struct SceMetaKey_s *iv = &metaKeys[(h->iv_idx)];
+        const struct SceMetaKey_s *key = &metaKeys[(h->key_idx)];
+        const struct SceMetaKey_s *iv = &metaKeys[(h->iv_idx)];
 
         puts("segment_offset = ");
         print_hex(h->segment_offset);
@@ -2175,7 +2237,7 @@ FUNC_DEF void ZelfDecompress(uint64_t zelfFileAddress, void *destAddress, uint64
 
     puts("\n");
 
-    if (decompress_result != 0 || xxx != original_size)
+    if ((decompress_result != 0) || (xxx != original_size))
     {
         puts("decompress failed!\n");
 
@@ -2185,8 +2247,7 @@ FUNC_DEF void ZelfDecompress(uint64_t zelfFileAddress, void *destAddress, uint64
     *destSize = xxx;
 }
 
-#pragma GCC push_options
-//#pragma GCC optimize("O0")
+#if DECRYPTLV2SELF_ENABLED
 
 FUNC_DEF void DecryptLv2Self(void *inDest, const void *inSrc, void* decryptBuf, uint8_t use_spu)
 {
@@ -2535,7 +2596,7 @@ FUNC_DEF void DecryptLv2Self(void *inDest, const void *inSrc, void* decryptBuf, 
     puts("DecryptLv2Self() done.\n");
 }
 
-#pragma GCC pop_options
+#endif
 
 #include "Stage1.c"
 #include "Stage2.c"
@@ -2543,9 +2604,6 @@ FUNC_DEF void DecryptLv2Self(void *inDest, const void *inSrc, void* decryptBuf, 
 #include "Stage4.c"
 #include "Stage5.c"
 #include "Stage6.c"
-
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 
 void stage_link_entry()
 {
@@ -2555,5 +2613,3 @@ void stage_link_entry()
     asm volatile("bl stage5_entry");
     asm volatile("bl stage6_entry");
 }
-
-#pragma GCC pop_options

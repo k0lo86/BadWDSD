@@ -6,7 +6,7 @@ FUNC_DEF void Stage1()
     //
 
     real_sc_puts_init();
-    sc_puts("BadWDSD Stage1 by Kafuu(aomsin2526)" " (Build Date: " __DATE__ " " __TIME__ ")\n");
+    sc_puts("Bad_WDSD Stage1 by Kafuu(aomsin2526)" " (Build Date: " __DATE__ " " __TIME__ ")\n");
 
     sc_triple_beep();
 
@@ -85,7 +85,42 @@ FUNC_DEF void Stage1()
 
     //
 
+    if (isqCFW)
+    {
+        uint64_t power_up_cause[2];
+        sc_query_system_power_up_cause(power_up_cause);
+
+        puts("power_up_cause[0] = ");
+        print_hex(power_up_cause[0]);
+        puts("\n");
+
+        puts("power_up_cause[1] = ");
+        print_hex(power_up_cause[1]);
+        puts("\n");
+
+        if ((power_up_cause[0] & 0x00000000ffffffff) == 0x200)
+        {
+            sc_puts("Wake source is BT!, waiting for power cycle by modchip...\n");
+            dead();
+        }
+    }
+
+    // inform modchip that we are good...
+    sc_puts("BadWDSD ok!\n");
+
+    //
+
     memset((void*)0, 0, (16 * 1024 * 1024));
+
+    // clear lv2
+    memset((void*)0x1000000, 0, 0x10000);
+    memset((void*)0x2000000, 0, 0x10000);
+    memset((void*)0x3000000, 0, 0x10000);
+    memset((void*)0x4000000, 0, 0x10000);
+    memset((void*)0x5000000, 0, 0x10000);
+    memset((void*)0x6000000, 0, 0x10000);
+    memset((void*)0x7000000, 0, 0x10000);
+    memset((void*)0x8000000, 0, 0x10000);
 
     //
 
@@ -169,6 +204,8 @@ FUNC_DEF void Stage1()
                     DecryptLv0Self((void*)lv0FileAddress, (const void*)lv0SelfFileAddress, 1);
 #endif
 
+                    // ANTI BRICK!!!
+                    // isqCFW!!!
                     if ((fwVersion >= 470) || isqCFW)
                     {
                         uint8_t searchData[] = {0x38, 0x60, 0x01, 0x00, 0x7C, 0x69, 0x03, 0xA6, 0x4E, 0x80, 0x04, 0x20, 0x60, 0x00, 0x00, 0x00};
@@ -178,11 +215,33 @@ FUNC_DEF void Stage1()
 
                         puts("Installing stage2j...\n");
                 
-                        if (!SearchAndReplace((void*)lv0FileAddress, lv0FileSize, searchData, 16, stage2jData, 32))
+                        if (!SearchAndReplace((void*)lv0FileAddress, lv0FileSize, searchData, sizeof(searchData), stage2jData, sizeof(stage2jData)))
+                        {
                             puts("Install failed!\n");
+
+                            if (isqCFW)
+                                dead_beep();
+                        }
                     }
                     else
                         puts("fw too low!\n");
+
+                    // ANTI BRICK!!!
+                    if (isqCFW)
+                    {
+                        // lv1.self -> lv1.qelf
+
+                        uint8_t searchData[] = {0x6C, 0x76, 0x31, 0x2E, 0x73, 0x65, 0x6C, 0x66};
+                        uint8_t replaceData[] = {0x6C, 0x76, 0x31, 0x2E, 0x71, 0x65, 0x6C, 0x66};
+
+                        puts("lv1.self -> lv1.qelf\n");
+
+                        if (!SearchAndReplace((void*)lv0FileAddress, lv0FileSize, searchData, sizeof(searchData), replaceData, sizeof(replaceData)))
+                        {
+                            puts("failed!\n");
+                            dead_beep();
+                        }
+                    }
                 }
                 else
                     puts("File not found!\n");
@@ -221,10 +280,6 @@ FUNC_DEF void Stage1()
 
 __attribute__((section("main1"))) void stage1_main()
 {
-    // zeroing ram
-    //memset((void*)0x0, 0, (256 * 1024 * 1024));
-    //eieio();
-
     sc_puts_init();
 
     Stage1();
@@ -238,9 +293,6 @@ __attribute__((noreturn, section("entry1"))) void stage1_entry()
     asm volatile("bl 4");
     asm volatile("mflr %0" : "=r"(stage_entry_ra)::);
     stage_entry_ra -= 4;
-
-    // set interrupt_depth to 0
-    interrupt_depth = 0;
 
     // set is_lv1 to 0
     is_lv1 = 0;

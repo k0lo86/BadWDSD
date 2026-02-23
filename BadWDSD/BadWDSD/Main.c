@@ -20,17 +20,30 @@ uint64_t swap_uint64(uint64_t val)
 void Watchdog()
 {
     uint64_t t1 = get_time_in_ms();
-
+    
     while (!Sc_GetSuccess())
     {
         uint64_t t2 = get_time_in_ms();
 
-        if ((t2 - t1) > 2500)
+        if (((t2 - t1) > 3000) || Sc_GetNeedReboot())
         {
-            Sc_Puts("shutdown\r\n");
-            busy_wait_ms(4000);
+            Sc_ClearShutdownSuccess();
+            Sc_Puts("shutdown");
 
-            Sc_Puts("powersw\r\n");
+            {
+                uint64_t st1 = get_time_in_ms();
+
+                while (!Sc_GetShutdownSuccess())
+                {
+                    uint64_t st2 = get_time_in_ms();
+
+                    if ((st2 - st1) > 20000)
+                        return;
+                }
+            }
+
+            busy_wait_ms(500);
+            Sc_Puts("powersw");
             break;
         }
     }
@@ -74,6 +87,7 @@ void Sc_Thread_x16_Stage0()
             //
 
             Sc_ClearSuccess();
+            Sc_ClearNeedReboot();
 
             //
 
@@ -109,11 +123,11 @@ void Sc_Thread_x16_Stage0()
 
             //
 
-            Sc_ClearTrigger();
+            Watchdog();
 
             //
 
-            Watchdog();
+            Sc_ClearTrigger();
         }
     }
 }
@@ -155,6 +169,7 @@ void Sc_Thread_x32_Stage0()
             //
 
             Sc_ClearSuccess();
+            Sc_ClearNeedReboot();
 
             //
 
@@ -184,11 +199,11 @@ void Sc_Thread_x32_Stage0()
 
             //
 
-            Sc_ClearTrigger();
+            Watchdog();
 
             //
 
-            Watchdog();
+            Sc_ClearTrigger();
         }
     }
 }

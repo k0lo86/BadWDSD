@@ -510,9 +510,9 @@ void Stagex_spu_job_DecryptLv0Self(const volatile struct Stagex_spu_job_DecryptL
 
     );
 
-    struct SceMetaHeader_s *metaHeader = (struct SceMetaHeader_s *)&metasBuf[0];
-    struct SceMetaSectionHeader_s *metaSectionHeaders = (struct SceMetaSectionHeader_s *)&metasBuf[sizeof(struct SceMetaHeader_s)];
-    struct SceMetaKey_s *metaKeys = (struct SceMetaKey_s *)&metasBuf[sizeof(struct SceMetaHeader_s) + ((metaHeader->section_entry_num) * sizeof(struct SceMetaSectionHeader_s))];
+    const struct SceMetaHeader_s *metaHeader = (const struct SceMetaHeader_s *)&metasBuf[0];
+    const struct SceMetaSectionHeader_s *metaSectionHeaders = (const struct SceMetaSectionHeader_s *)&metasBuf[sizeof(struct SceMetaHeader_s)];
+    const struct SceMetaKey_s *metaKeys = (const struct SceMetaKey_s *)&metasBuf[sizeof(struct SceMetaHeader_s) + ((metaHeader->section_entry_num) * sizeof(struct SceMetaSectionHeader_s))];
 
     uint8_t *tmpBuf = (uint8_t *)0x24000; // [16384]
 
@@ -532,12 +532,12 @@ void Stagex_spu_job_DecryptLv0Self(const volatile struct Stagex_spu_job_DecryptL
 
     for (uint16_t i = 0; i < elfHeader.e_phnum; ++i)
     {
-        struct ElfPhdr_s *phdr = &elfPhdrs[i];
+        const struct ElfPhdr_s *phdr = &elfPhdrs[i];
 
-        struct SceMetaSectionHeader_s *h = &metaSectionHeaders[i];
+        const struct SceMetaSectionHeader_s *h = &metaSectionHeaders[i];
 
-        struct SceMetaKey_s *key = &metaKeys[h->key_idx];
-        struct SceMetaKey_s *iv = &metaKeys[h->iv_idx];
+        const struct SceMetaKey_s *key = &metaKeys[h->key_idx];
+        const struct SceMetaKey_s *iv = &metaKeys[h->iv_idx];
 
         uint64_t in_addr = (job_context->inSrcEa + h->segment_offset);
         uint64_t out_addr = (job_context->inDestEa + phdr->p_offset);
@@ -567,7 +567,8 @@ void Stagex_spu_job_stage2(const volatile struct Stagex_spu_job_stage2_context_s
     static const uint32_t tmpBufSize = (128 * 1024);
     uint8_t *tmpBuf = (uint8_t *)0x10000;
 
-    uint8_t found_CoreOSHashCheck = 0;
+    uint8_t found_UpdateMgrCoreOSHashCheck = 0;
+    uint8_t found_SysmgrCoreOSHashCheck = 0;
 
     uint8_t found_disable_erase_hash_standby_bank_and_fsm = 0;
     uint8_t found_get_version_and_hash = 0;
@@ -592,9 +593,9 @@ void Stagex_spu_job_stage2(const volatile struct Stagex_spu_job_stage2_context_s
         {
             uint64_t curEaAddr = (tmpBuf_CurEaAddr + i);
 
-            if (!found_CoreOSHashCheck)
+            if (!found_UpdateMgrCoreOSHashCheck)
             {
-                // puts("Patching CoreOS hash check...\n");
+                // puts("Patching Update Manager CoreOS hash check...\n");
 
                 __attribute__((aligned(16))) static const uint8_t searchData[] = {0x88, 0x18, 0x00, 0x36, 0x2F, 0x80, 0x00, 0xFF, 0x41, 0x9E, 0x00, 0x1C, 0x7F, 0x63, 0xDB, 0x78, 0xE8, 0xA2, 0x85, 0x78};
                 __attribute__((aligned(16))) static const uint8_t replaceData[] = {0x88, 0x18, 0x00, 0x36, 0x2F, 0x80, 0x00, 0xFF, 0x60, 0x00, 0x00, 0x00, 0x7F, 0x63, 0xDB, 0x78, 0xE8, 0xA2, 0x85, 0x78};
@@ -602,7 +603,21 @@ void Stagex_spu_job_stage2(const volatile struct Stagex_spu_job_stage2_context_s
                 if (!memcmp32(&tmpBuf[i], searchData, sizeof(searchData)))
                 {
                     DMAWrite(replaceData, curEaAddr, sizeof(replaceData));
-                    found_CoreOSHashCheck = 1;
+                    found_UpdateMgrCoreOSHashCheck = 1;
+                }
+            }
+
+            if (!found_SysmgrCoreOSHashCheck)
+            {
+                // puts("Patching Sysmgr CoreOS hash check...\n");
+
+                __attribute__((aligned(16))) static const uint8_t searchData[] = {0xF8, 0x21, 0xFF, 0x31, 0x7C, 0x08, 0x02, 0xA6, 0xFB, 0xA1, 0x00, 0xB8, 0x3B, 0xA1, 0x00, 0x70, 0xF8, 0x01, 0x00, 0xE0, 0x7F, 0xA3, 0xEB, 0x78, 0xFB, 0x81, 0x00, 0xB0, 0x48, 0x00, 0x01, 0x2D, 0x7F, 0xA3, 0xEB, 0x78, 0x48, 0x00, 0x60, 0xE1, 0x7F, 0xA3, 0xEB, 0x78, 0x83, 0x81, 0x00, 0x88, 0x48, 0x00, 0x02, 0xC5, 0xE8, 0x01, 0x00, 0xE0, 0xEB, 0xA1, 0x00, 0xB8, 0x7B, 0x83, 0x00, 0x20};
+                __attribute__((aligned(16))) static const uint8_t replaceData[] = {0xF8, 0x21, 0xFF, 0x31, 0x7C, 0x08, 0x02, 0xA6, 0xFB, 0xA1, 0x00, 0xB8, 0x3B, 0xA1, 0x00, 0x70, 0xF8, 0x01, 0x00, 0xE0, 0x7F, 0xA3, 0xEB, 0x78, 0xFB, 0x81, 0x00, 0xB0, 0x48, 0x00, 0x01, 0x2D, 0x7F, 0xA3, 0xEB, 0x78, 0x48, 0x00, 0x60, 0xE1, 0x7F, 0xA3, 0xEB, 0x78, 0x83, 0x81, 0x00, 0x88, 0x48, 0x00, 0x02, 0xC5, 0xE8, 0x01, 0x00, 0xE0, 0xEB, 0xA1, 0x00, 0xB8, 0x38, 0x60, 0x00, 0x00};
+
+                if (!memcmp32(&tmpBuf[i], searchData, sizeof(searchData)))
+                {
+                    DMAWrite(replaceData, curEaAddr, sizeof(replaceData));
+                    found_SysmgrCoreOSHashCheck = 1;
                 }
             }
 

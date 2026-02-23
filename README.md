@@ -53,7 +53,11 @@ It is heavily based on **Evilnat PEX CFW**. And will support every feature excep
 
 # qCFW quirks
 
-For some unknown reason, When you turn on the console using wireless controller it won't sync. You must power cycle the controller for it to sync.
+For some unknown reason, When you turn on the console using wireless controller it won't sync.
+
+Workaround has been implemented. If you turn the console on using wireless, it will always power cycle once before fully boot.
+
+But controller sync will work fine.
 
 # Note on DEX mode
 
@@ -140,15 +144,16 @@ To flash .uf2 file (it is included in qCFW zip), simply connect modchip USB port
 
 You should see LED blinking. Flash successful and ready to use. You can disconnect it from your PC.
 
-Exclude power and ground, you only need to solder 4 wires that marked red **(CMD, CLK, SC_RX, SC_TX)**. Other pin is optional.
+For signal, you only need to solder 4 wires that marked red **(CMD, CLK, SC_RX, SC_TX)**. Other signal pin is optional.
+For power, you must solder **5V/3.3V and GND**.
 
-It is possible to power the modchip using external power as long as it is active during ps3 standby
+It is possible to power the modchip using external power as long as it is active during ps3 standby (**GND must be soldered to motherboard!**)
 
-**You should measure the resistance of CMD/CLK wire. Resistance to ground should get around 55 ohm. If it doesn't then something is wrong.**
+**You should measure the resistance of CMD/CLK point. Resistance to ground should be around 55 ohm. If it doesn't then something is wrong.**
 
 # Wiring guides
 
-CMD/CLK wire should not be too thick
+CMD/CLK wire should not be too thick. **0.1mm magnet wire RECOMMENDED**
 
 Success rate depends on quality of your soldering and wiring.
 
@@ -231,7 +236,7 @@ You can't access syscon the old ways anymore. It must be done through modchip. S
 
 # NoBT
 
-TODO. It requires LITE pin and hardware flasher for first installation if you are already on update loop.
+[See PSX-Place](https://www.psx-place.com/threads/badwdsd-qcfw-hw-flasher-nobt-thread.49625/)
 
 # eMMC Support?
 

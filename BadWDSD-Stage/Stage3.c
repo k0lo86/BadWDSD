@@ -190,7 +190,7 @@ FUNC_DEF void ApplyLv2Diff2(uint64_t lv2DiffFileAddress, uint64_t lv2AreaAddr, u
     {
         uint64_t curAddress = lv2DiffFileAddress;
 
-        uint32_t diffCount = *((uint32_t *)curAddress);
+        uint32_t diffCount = *((const uint32_t *)curAddress);
         curAddress += 4;
 
         lv1_puts("diffCount = ");
@@ -199,10 +199,10 @@ FUNC_DEF void ApplyLv2Diff2(uint64_t lv2DiffFileAddress, uint64_t lv2AreaAddr, u
 
         for (uint32_t i = 0; i < diffCount; ++i)
         {
-            uint32_t addr = *((uint32_t *)curAddress);
+            uint32_t addr = *((const uint32_t *)curAddress);
             curAddress += 4;
 
-            uint32_t value = *((uint32_t *)curAddress);
+            uint32_t value = *((const uint32_t *)curAddress);
             curAddress += 4;
 
             uint8_t newVal = (uint8_t)(value >> 8);
@@ -223,7 +223,7 @@ FUNC_DEF void ApplyLv2Diff2(uint64_t lv2DiffFileAddress, uint64_t lv2AreaAddr, u
 
             if (verifyOrig)
             {
-                uint8_t curVal = *((uint8_t *)(uint64_t)(addr + lv2AreaAddr));
+                uint8_t curVal = *((const uint8_t *)((uint64_t)(addr + lv2AreaAddr)));
 
                 if (curVal != origVal)
                 {
@@ -241,7 +241,7 @@ FUNC_DEF void ApplyLv2Diff2(uint64_t lv2DiffFileAddress, uint64_t lv2AreaAddr, u
                 }
             }
 
-            *((uint8_t *)(uint64_t)(addr + lv2AreaAddr)) = useNewVal ? newVal : origVal;
+            *((uint8_t *)((uint64_t)(addr + lv2AreaAddr))) = useNewVal ? newVal : origVal;
         }
     }
 
@@ -303,7 +303,7 @@ FUNC_DEF void ApplyLv2Diff(uint64_t lv2AreaAddr, uint8_t useNewVal, uint8_t veri
 
             lv1_puts("\n");
 
-            uint64_t zelf_magic = *((uint64_t *)lv2DiffFileAddress);
+            uint64_t zelf_magic = *((const uint64_t *)lv2DiffFileAddress);
 
             if ((zelf_magic == 0x5A454C465A454C46) || (zelf_magic == 0x5A454C465A454C32))
             {
@@ -355,7 +355,7 @@ FUNC_DEF void LoadLv2(uint64_t srcAddr, uint64_t loadme_addr)
     lv1_puts("\n");
 
     {
-        struct SceHeader_s *sceHeader = (struct SceHeader_s *)srcAddr;
+        const struct SceHeader_s *sceHeader = (const struct SceHeader_s *)srcAddr;
 
         if (sceHeader->magic != 0x53434500)
         {
@@ -367,6 +367,8 @@ FUNC_DEF void LoadLv2(uint64_t srcAddr, uint64_t loadme_addr)
         {
             lv1_puts("SELF detected\n");
 
+#if DECRYPTLV2SELF_ENABLED
+
             //FUNC_DEF void DecryptLv2Self(void *inDest, const void *inSrc, void* decryptBuf)
             DecryptLv2Self((void*)0xB000000, (const void*)srcAddr, (void*)0xA000000, 1);
 
@@ -374,15 +376,21 @@ FUNC_DEF void LoadLv2(uint64_t srcAddr, uint64_t loadme_addr)
 
             memset((void *)loadme_addr, 0, (16 * 1024 * 1024));
             LoadElf(0xB000000, loadme_addr, 1);
+
+#else
+            lv1_puts("not supported!\n");
+            dead_beep();
+#endif
+
         }
         else
         {
-            uint64_t file_offset = *((uint64_t *)(srcAddr + 0x10));
+            uint64_t file_offset = *((const uint64_t *)(srcAddr + 0x10));
 
             lv1_puts("file_offset = ");
             lv1_print_hex(file_offset);
 
-            uint64_t real_file_size = *((uint64_t *)(srcAddr + 0x18));
+            uint64_t real_file_size = *((const uint64_t *)(srcAddr + 0x18));
 
             lv1_puts(", real_file_size = ");
             lv1_print_hex(real_file_size);
@@ -406,7 +414,7 @@ FUNC_DEF void LoadLv2(uint64_t srcAddr, uint64_t loadme_addr)
 
             lv1_puts("\n");
 
-            uint64_t zelf_magic = *((uint64_t *)file_data);
+            uint64_t zelf_magic = *((const uint64_t *)file_data);
 
             if ((zelf_magic == 0x5A454C465A454C46) || (zelf_magic == 0x5A454C465A454C32))
             {
@@ -425,7 +433,7 @@ FUNC_DEF void LoadLv2(uint64_t srcAddr, uint64_t loadme_addr)
                 lv1_puts("ZELF not detected, assume RAW\n");
 
                 memset((void *)loadme_addr, 0, (16 * 1024 * 1024));
-                memcpy((void *)loadme_addr, (void *)file_data, file_size);
+                memcpy((void *)loadme_addr, (const void *)file_data, file_size);
             }
         }
     }
@@ -437,9 +445,6 @@ FUNC_DEF void LoadLv2(uint64_t srcAddr, uint64_t loadme_addr)
             EnableLoadCobraFromUSB(loadme_addr);
     }
 }
-
-#pragma GCC push_options
-// #pragma GCC optimize("O0")
 
 FUNC_DEF void Stage3_AuthLv2(uint64_t laid)
 {
@@ -479,134 +484,53 @@ FUNC_DEF void Stage3_AuthLv2(uint64_t laid)
     lv1_puts("Stage3_AuthLv2() done.\n");
 }
 
-#pragma GCC pop_options
-
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 FUNC_DECL void Stage4();
 
-__attribute__((section("main3"))) void stage3_main()
+__attribute__((section("main3"))) void stage3_main(
+    uint64_t in_r3, uint64_t in_r4, uint64_t in_r5, uint64_t in_r6, uint64_t in_r7, uint64_t in_r8
+)
 {
-    register uint64_t r4 asm("r4");
-    register uint64_t r5 asm("r5");
-    register uint64_t r6 asm("r6");
-    register uint64_t r7 asm("r7");
+    //lv1_puts("stage3_main()\n");
 
     // r5 = options
-    // peek: r6 = addr, r6 = outValue
+    // peek: r6 = addr, r4 = outValue
     // poke: r6 = addr, r7 = value
 
-    uint64_t r5_2 = r5;
-    uint64_t r6_2 = r6;
-    uint64_t r7_2 = r7;
-
-    // peekpoke64
-    if (r5_2 == 0x1)
+    // poke8
+    if (in_r5 == 0x8)
     {
-        asm volatile("ld %0, 0(%1)" : "=r"(r6) : "r"(r6) :);
-        return;
-    }
-    else if (r5_2 == 0x2)
-    {
-        asm volatile("std %0, 0(%1)" ::"r"(r7), "r"(r6) :);
-
-        if ((r6_2 % 0x10000) == 0)
-        {
-            sc_puts_init();
-
-            lv1_puts("poke64 addr = ");
-            lv1_print_hex(r6_2);
-            lv1_puts(", value = ");
-            lv1_print_hex(r7_2);
-            lv1_puts("\n");
-        }
-
+        uint8_t* p = (uint8_t*)in_r6;
+        *p = (uint8_t)in_r7;
         return;
     }
 
-    // peekpoke32
-    if (r5_2 == 0x3)
+    // poke64
+    if (in_r5 == 0x2)
     {
-        asm volatile("lwz %0, 0(%1)" : "=r"(r6) : "r"(r6) :);
-        return;
-    }
-    else if (r5_2 == 0x4)
-    {
-        asm volatile("stw %0, 0(%1)" ::"r"(r7), "r"(r6) :);
-
-        if ((r6_2 % 0x10000) == 0)
-        {
-            sc_puts_init();
-
-            lv1_puts("poke32 addr = ");
-            lv1_print_hex(r6_2);
-            lv1_puts(", value = ");
-            lv1_print_hex(r7_2);
-            lv1_puts("\n");
-        }
-
+        uint64_t* p = (uint64_t*)in_r6;
+        *p = in_r7;
         return;
     }
 
-    // peekpoke8
-    if (r5_2 == 0x7)
-    {
-        asm volatile("lbz %0, 0(%1)" : "=r"(r6) : "r"(r6) :);
-        return;
-    }
-    else if (r5_2 == 0x8)
-    {
-        asm volatile("stb %0, 0(%1)" ::"r"(r7), "r"(r6) :);
-
-        // if ((r6_2 % 0x10000) == 0)
-        {
-            sc_puts_init();
-
-            lv1_puts("poke8 addr = ");
-            lv1_print_hex(r6_2);
-            lv1_puts(", value = ");
-            lv1_print_hex(r7_2);
-            lv1_puts("\n");
-        }
-
-        return;
-    }
-
-    // print hex value
-    if (r5_2 == 0x20)
-    {
-        sc_puts_init();
-
-        lv1_puts("print hex value = ");
-        lv1_print_hex(r6_2);
-        lv1_puts("\n");
-
-        return;
-    }
-
-#if 1
-    // Call stage4
-    if (r5_2 == 0x21)
-    {
-        Stage4();
-        return;
-    }
-#endif
-
-#if 1
     // auth lv2
-    if (r5_2 == 0x30)
+    if (in_r5 == 0x30)
     {
         sc_puts_init();
 
         // r6 = laid
-        Stage3_AuthLv2(r6_2);
+        Stage3_AuthLv2(in_r6);
+        return;
     }
-#endif
+
+    // Call Stage4
+    if (in_r5 == 0x21)
+    {
+        Stage4();
+        return;
+    }
 
     // only 0x31 (after spp load_profile)
-    if (r5_2 != 0x31)
+    if (in_r5 != 0x31)
         return;
 
     struct Stagex_Context_s *ctx = GetStagexContext();
@@ -620,18 +544,16 @@ __attribute__((section("main3"))) void stage3_main()
     ctx->stage3_alreadyDone = 0x69;
 }
 
-#pragma GCC pop_options
-
 // in:
 // r4 = magic (0x6996)
 // r5 = arg1
 // r6 = arg2
 // r7 = arg3
-// r8 = arg3
+// r8 = arg4
 
 // out:
 // r3 = 0
-// r6 = return value
+// r4-r6 = return value
 
 __attribute__((noreturn, section("entry3"))) void stage3_entry()
 {
@@ -708,9 +630,6 @@ __attribute__((noreturn, section("entry3"))) void stage3_entry()
     // set lv1_rtoc
     asm volatile("mr %0, 2" : "=r"(lv1_rtoc)::);
 
-    // set interrupt_depth to 0
-    interrupt_depth = 0;
-
     // set is_lv1 to 0x9669
     is_lv1 = 0x9669;
 
@@ -729,10 +648,10 @@ __attribute__((noreturn, section("entry3"))) void stage3_entry()
     asm volatile("mr %0, 1" : "=r"(lv1_sp)::);
 
     // set stage_sp to 0xE000000
-    stage_sp = 0xE000000;
+    //stage_sp = 0xE000000;
 
     // set r1 to stage_sp
-    asm volatile("mr 1, %0" ::"r"(stage_sp) :);
+    //asm volatile("mr 1, %0" ::"r"(stage_sp) :);
 
     // sync
     asm volatile("sync");
@@ -767,9 +686,9 @@ __attribute__((noreturn, section("entry3"))) void stage3_entry()
     asm volatile("ld 1, %0(1)" ::"i"(8 * 1) :);
     asm volatile("ld 2, %0(1)" ::"i"(8 * 2) :);
     asm volatile("ld 3, %0(1)" ::"i"(8 * 3) :);
-    //asm volatile("ld 4, %0(1)" ::"i"(8 * 4) :);
-    //asm volatile("ld 5, %0(1)" ::"i"(8 * 5) :);
-    //asm volatile("ld 6, %0(1)" ::"i"(8 * 6) :);
+    //asm volatile("ld 4, %0(1)" ::"i"(8 * 4) :);//
+    //asm volatile("ld 5, %0(1)" ::"i"(8 * 5) :);//
+    //asm volatile("ld 6, %0(1)" ::"i"(8 * 6) :);//
     asm volatile("ld 7, %0(1)" ::"i"(8 * 7) :);
     asm volatile("ld 8, %0(1)" ::"i"(8 * 8) :);
     asm volatile("ld 9, %0(1)" ::"i"(8 * 9) :);

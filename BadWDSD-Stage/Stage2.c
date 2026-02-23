@@ -1,15 +1,12 @@
 #undef ENTRY_WAIT_IN_MS
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 FUNC_DEF void ApplyLv1Diff(uint64_t lv1DiffFileAddress, uint8_t verifyOrig)
 {
     puts("ApplyLv1Diff()\n");
 
     uint64_t curAddress = lv1DiffFileAddress;
 
-    uint32_t diffCount = *((uint32_t *)curAddress);
+    uint32_t diffCount = *((const uint32_t *)curAddress);
     curAddress += 4;
 
     puts("diffCount = ");
@@ -18,10 +15,10 @@ FUNC_DEF void ApplyLv1Diff(uint64_t lv1DiffFileAddress, uint8_t verifyOrig)
 
     for (uint32_t i = 0; i < diffCount; ++i)
     {
-        uint32_t addr = *((uint32_t *)curAddress);
+        uint32_t addr = *((const uint32_t *)curAddress);
         curAddress += 4;
 
-        uint32_t value = *((uint32_t *)curAddress);
+        uint32_t value = *((const uint32_t *)curAddress);
         curAddress += 4;
 
         uint8_t origVal = (uint8_t)(value >> 8);
@@ -42,7 +39,7 @@ FUNC_DEF void ApplyLv1Diff(uint64_t lv1DiffFileAddress, uint8_t verifyOrig)
 
         if (verifyOrig)
         {
-            uint8_t curVal = *((uint8_t *)(uint64_t)addr);
+            uint8_t curVal = *((const uint8_t *)(uint64_t)addr);
 
             if (curVal != origVal)
             {
@@ -301,8 +298,6 @@ FUNC_DEF void Stage2()
     }
 }
 
-#pragma GCC pop_options
-
 __attribute__((section("main2"))) void stage2_main()
 {
     sc_puts_init();
@@ -318,9 +313,6 @@ __attribute__((noreturn, section("entry2"))) void stage2_entry()
     asm volatile("bl 4");
     asm volatile("mflr %0" : "=r"(stage_entry_ra)::);
     stage_entry_ra -= 4;
-
-    // set interrupt_depth to 0
-    interrupt_depth = 0;
 
     // set is_lv1 to 0
     is_lv1 = 0;

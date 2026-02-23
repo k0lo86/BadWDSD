@@ -1,7 +1,10 @@
 #include "Include.h"
 
 volatile bool scIsInited = false;
+volatile bool scIsReadyForUser = false;
 volatile struct ScContext_s scContext;
+
+recursive_mutex_t scMutex;
 
 void Sc_RxFn()
 {
@@ -12,9 +15,9 @@ void Sc_RxFn()
         if (ch == 0)
             continue;
 
-        scContext.rxBuf[scContext.rxBufLen] = ch;
-        ++scContext.rxBufLen;
-        scContext.rxBuf[scContext.rxBufLen] = 0;
+        scContext.rxBuf[scContext.rxBufCurLen] = ch;
+        ++scContext.rxBufCurLen;
+        scContext.rxBuf[scContext.rxBufCurLen] = 0;
 
         bool trigger = false;
 
@@ -38,6 +41,28 @@ void Sc_RxFn()
             sync();
         }
 
+        bool shutdownSuccess = false;
+
+        if (strstr(scContext.rxBuf, "(PowerOff State)"))
+            shutdownSuccess = true;
+
+        if (shutdownSuccess)
+        {
+            scContext.shutdownSuccess = true;
+            sync();
+        }
+
+        bool needReboot = false;
+
+        if (strstr(scContext.rxBuf, "Wake source is BT!"))
+            needReboot = true;
+
+        if (needReboot)
+        {
+            scContext.needReboot = true;
+            sync();
+        }
+
         bool reset = false;
 
         if ((get_time_in_ms() - scContext.lastScTxTimeInMs) > 5000)
@@ -57,11 +82,11 @@ void Sc_RxFn()
 
         if (strstr(scContext.rxBuf, "[mullion]$ "))
         {
-            scContext.rxBufLen = 0;
-            scContext.rxBuf[scContext.rxBufLen] = 0;
+            scContext.rxBufCurLen = 0;
+            scContext.rxBuf[scContext.rxBufCurLen] = 0;
         }
 
-        if (ch == '\n' || (scContext.rxBufLen >= 1023))
+        if ((ch == '\n') || (scContext.rxBufCurLen >= (SC_RXBUF_SIZE - 1)))
         {
             volatile struct Sc_SendCommandContext_s *ctx = scContext.sendCommandCtx;
             bool ctx_done = false;
@@ -76,7 +101,7 @@ void Sc_RxFn()
                     // PrintLog("strstr ok!\n");
 
                     strcpy(ctx->response, scContext.rxBuf);
-                    ctx->responseLen = scContext.rxBufLen;
+                    ctx->responseLen = scContext.rxBufCurLen;
 
                     scContext.sendCommandCtx = NULL;
                     sync();
@@ -85,21 +110,21 @@ void Sc_RxFn()
                 }
             }
 
-            if (scContext.rxBufLen >= 2 && !strstr(scContext.rxBuf, "#!:4"))
+            if ((scContext.rxBufCurLen >= 2) && !strstr(scContext.rxBuf, "#!:4"))
             {
                 PrintLog("Sc_Rx: ");
 
-                --scContext.rxBufLen;
-                scContext.rxBuf[scContext.rxBufLen] = 0;
+                --scContext.rxBufCurLen;
+                scContext.rxBuf[scContext.rxBufCurLen] = 0;
 
-                --scContext.rxBufLen;
-                scContext.rxBuf[scContext.rxBufLen] = '\n';
+                --scContext.rxBufCurLen;
+                scContext.rxBuf[scContext.rxBufCurLen] = '\n';
 
                 PrintLog("%s", scContext.rxBuf);
             }
 
-            scContext.rxBufLen = 0;
-            scContext.rxBuf[scContext.rxBufLen] = 0;
+            scContext.rxBufCurLen = 0;
+            scContext.rxBuf[scContext.rxBufCurLen] = 0;
 
             if (ctx_done)
             {
@@ -123,6 +148,11 @@ bool Sc_IsInited()
     return scIsInited;
 }
 
+bool Sc_IsReadyForUser()
+{
+    return scIsReadyForUser;
+}
+
 bool Sc_GetScLite()
 {
     return !Gpio_GetOnce(SC_LITE_PIN_ID);
@@ -135,19 +165,27 @@ bool Sc_GetScBanksel()
 
 volatile struct Sc_SendCommandContext_s cmdCtx;
 
+WORD sc2tb_key_schedule[60];
+uint64_t sc2tb_key[2];
+
+WORD tb2sc_key_schedule[60];
+uint64_t tb2sc_key[2];
+
 void Sc_Init()
 {
+    recursive_mutex_init(&scMutex);
+
     scContext.uartId = uart0;
 
-    scContext.rxBufLen = 0;
+    scContext.rxBufCurLen = 0;
     scContext.rxBuf[0] = 0;
-
-    scContext.txBufLen = 0;
-    scContext.txBuf[0] = 0;
 
     scContext.trigger = false;
 
     scContext.success = false;
+    scContext.shutdownSuccess = false;
+
+    scContext.needReboot = false;
 
     scContext.sendCommandCtx = NULL;
 
@@ -163,7 +201,7 @@ void Sc_Init()
 
         //
 
-        sprintf(cmdCtx.cmd, "somejunk\r\n");
+        sprintf(cmdCtx.cmd, "somejunk");
 
 #if SC_IS_SW
         sprintf(cmdCtx.expectedResponse, "NG F");
@@ -182,18 +220,12 @@ void Sc_Init()
 
         // 71f03f184c01c5ebc3f6a22a42ba9525
 
-        WORD sc2tb_key_schedule[60];
-        uint64_t sc2tb_key[2];
-
         sc2tb_key[0] = swap_uint64(0x71f03f184c01c5eb);
         sc2tb_key[1] = swap_uint64(0xc3f6a22a42ba9525);
 
         aes_key_setup((BYTE *)sc2tb_key, sc2tb_key_schedule, 128);
 
         // 907e730f4d4e0a0b7b75f030eb1d9d36
-
-        WORD tb2sc_key_schedule[60];
-        uint64_t tb2sc_key[2];
 
         tb2sc_key[0] = swap_uint64(0x907e730f4d4e0a0b);
         tb2sc_key[1] = swap_uint64(0x7b75f030eb1d9d36);
@@ -213,7 +245,7 @@ void Sc_Init()
 #if SC_IS_SW
 
             {
-                sprintf(cmdCtx.cmd, "SETCMDLONG FF FF\r\n");
+                sprintf(cmdCtx.cmd, "SETCMDLONG FF FF");
                 sprintf(cmdCtx.expectedResponse, "OK 00000000");
 
                 Sc_SendCommand(&cmdCtx);
@@ -225,8 +257,8 @@ void Sc_Init()
 #else
 
             {
-                sprintf(cmdCtx.cmd, "scopen\r\n");
-                sprintf(cmdCtx.expectedResponse, "SC_READY\r\n");
+                sprintf(cmdCtx.cmd, "scopen");
+                sprintf(cmdCtx.expectedResponse, "SC_READY");
 
                 Sc_SendCommand(&cmdCtx);
 
@@ -239,10 +271,10 @@ void Sc_Init()
             {
 
 #if SC_IS_SW
-                sprintf(cmdCtx.cmd, "AUTH1 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\r\n");
+                sprintf(cmdCtx.cmd, "AUTH1 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
                 sprintf(cmdCtx.expectedResponse, "OK 00000000 10100000FFFFFFFF0000000000000000");
 #else
-                sprintf(cmdCtx.cmd, "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\r\n");
+                sprintf(cmdCtx.cmd, "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
                 sprintf(cmdCtx.expectedResponse, "10100000FFFFFFFF0000000000000000");
 #endif
 
@@ -344,7 +376,7 @@ void Sc_Init()
 #if SC_IS_SW
 
                 {
-                    sprintf(cmdCtx.cmd, "SETCMDLONG FF FF\r\n");
+                    sprintf(cmdCtx.cmd, "SETCMDLONG FF FF");
                     sprintf(cmdCtx.expectedResponse, "OK 00000000");
 
                     Sc_SendCommand(&cmdCtx);
@@ -357,10 +389,10 @@ void Sc_Init()
 
                 {
 #if SC_IS_SW
-                    sprintf(cmdCtx.cmd, "AUTH2 %s\r\n", auth2r_str);
+                    sprintf(cmdCtx.cmd, "AUTH2 %s", auth2r_str);
                     sprintf(cmdCtx.expectedResponse, "OK 00000000");
 #else
-                    sprintf(cmdCtx.cmd, "%s\r\n", auth2r_str);
+                    sprintf(cmdCtx.cmd, "%s", auth2r_str);
                     sprintf(cmdCtx.expectedResponse, "SC_SUCCESS");
 #endif
 
@@ -385,21 +417,31 @@ void Sc_Init()
 
             if (banksel)
             {
-                sprintf(cmdCtx.cmd, "w 1224 %s\r\n", banksel ? "00" : "ff");
+                // clear request_os_bank_indicator
+                {
+                    sprintf(cmdCtx.cmd, "w f02 ff");
+                    sprintf(cmdCtx.expectedResponse, "OK 00000000");
+
+                    Sc_SendCommand(&cmdCtx);
+                }
+
+                {
+                    sprintf(cmdCtx.cmd, "w 1224 00");
+                    sprintf(cmdCtx.expectedResponse, "OK 00000000");
+
+                    Sc_SendCommand(&cmdCtx);
+                }
+            }
+
+            {
+                sprintf(cmdCtx.cmd, "w 1211 03");
                 sprintf(cmdCtx.expectedResponse, "OK 00000000");
 
                 Sc_SendCommand(&cmdCtx);
             }
 
             {
-                sprintf(cmdCtx.cmd, "w 1211 03\r\n");
-                sprintf(cmdCtx.expectedResponse, "OK 00000000");
-
-                Sc_SendCommand(&cmdCtx);
-            }
-
-            {
-                sprintf(cmdCtx.cmd, "w f00 %s\r\n", lite ? "01" : "00");
+                sprintf(cmdCtx.cmd, "w f00 %s", lite ? "01" : "00");
                 sprintf(cmdCtx.expectedResponse, "OK 00000000");
 
                 Sc_SendCommand(&cmdCtx);
@@ -413,21 +455,31 @@ void Sc_Init()
 
             if (banksel)
             {
-                sprintf(cmdCtx.cmd, "w 48c24 %s\r\n", banksel ? "00" : "ff");
+                // clear request_os_bank_indicator
+                {
+                    sprintf(cmdCtx.cmd, "w 3002 ff");
+                    sprintf(cmdCtx.expectedResponse, "w complete!");
+
+                    Sc_SendCommand(&cmdCtx);
+                }
+
+                {
+                    sprintf(cmdCtx.cmd, "w 48c24 00");
+                    sprintf(cmdCtx.expectedResponse, "w complete!");
+
+                    Sc_SendCommand(&cmdCtx);
+                }
+            }
+
+            {
+                sprintf(cmdCtx.cmd, "w 48c11 03");
                 sprintf(cmdCtx.expectedResponse, "w complete!");
 
                 Sc_SendCommand(&cmdCtx);
             }
 
             {
-                sprintf(cmdCtx.cmd, "w 48c11 03\r\n");
-                sprintf(cmdCtx.expectedResponse, "w complete!");
-
-                Sc_SendCommand(&cmdCtx);
-            }
-
-            {
-                sprintf(cmdCtx.cmd, "w 3000 %s\r\n", lite ? "01" : "00");
+                sprintf(cmdCtx.cmd, "w 3000 %s", lite ? "01" : "00");
                 sprintf(cmdCtx.expectedResponse, "w complete!");
 
                 Sc_SendCommand(&cmdCtx);
@@ -444,11 +496,14 @@ void Sc_Init()
                 {
                     busy_wait_ms(1000);
 
-                    Sc_Puts("shutdown\r\n");
+                    Sc_Puts("shutdown");
                 }
             }
         }
     }
+
+    scIsReadyForUser = true;
+    sync();
 }
 
 bool Sc_GetTrigger()
@@ -471,86 +526,129 @@ void Sc_ClearSuccess()
     scContext.success = false;
 }
 
-void Sc_Putc(char c)
+bool Sc_GetShutdownSuccess()
+{
+    return scContext.shutdownSuccess;
+}
+
+void Sc_ClearShutdownSuccess()
+{
+    scContext.shutdownSuccess = false;
+}
+
+bool Sc_GetNeedReboot()
+{
+    return scContext.needReboot;
+}
+
+void Sc_ClearNeedReboot()
+{
+    scContext.needReboot = false;
+}
+
+void Sc_CheckIsInited()
 {
     if (!Sc_IsInited())
+    {
+        PrintLog("Sc is not inited!, dead!\n");
+        dead();
         return;
+    }
+}
+
+void Sc_Puts(const char *cmd)
+{
+    Sc_CheckIsInited();
+
+    size_t cmd_StrLen = strlen(cmd);
+
+    if (cmd_StrLen == 0)
+        return;
+
+    size_t cmd_StrLenToSend = cmd_StrLen;
+
+    // find \r or \n
+
+    {
+        size_t i = 0;
+
+        while (1)
+        {
+            char c = cmd[i];
+
+            if ((c == '\r') || (c == '\n'))
+            {
+                cmd_StrLenToSend = i;
+                break;
+            }
+
+            ++i;
+
+            if (i == cmd_StrLen)
+                break;
+        }
+    }
+
+    if (cmd_StrLenToSend == 0)
+        return;
+
+    if (cmd_StrLenToSend >= (SC_TXBUF_SIZE - 1))
+    {
+        PrintLog("cmd_StrLenToSend too big!\n");
+        dead();
+        return;
+    }
+
+    recursive_mutex_enter_blocking(&scMutex);
+
+    uint32_t checksum = 0;
+
+    PrintLog("Sc_Tx: ");
+
+    {
+        size_t i = 0;
+
+        while (1)
+        {
+            char c = cmd[i];
+
+            PrintLog("%c", c);
+            Uart_Putc(scContext.uartId, c);
+            checksum += c;
+
+            ++i;
+
+            if (i == cmd_StrLenToSend)
+                break;
+        }
+    }
+
+    checksum %= 0x100;
 
 #if SC_IS_SW
-
-    if (c == '\n')
-        return;
-
-    if (c == '\r')
     {
-        uint32_t checksum = 0;
+        char str[16];
+        sprintf(str, ":%02X", (uint32_t)checksum);
 
-        for (uint32_t i = 0; i < scContext.txBufLen; ++i)
-            checksum += scContext.txBuf[i];
-
-        checksum %= 0x100;
-
-        // PrintLog("checksum = 0x%X\n", (uint32_t)checksum);
-
-        PrintLog("Sc_Tx: ");
-        PrintLog((const char *)scContext.txBuf);
-        PrintLog(":%02X\n", checksum);
-
-        Uart_Putc(scContext.uartId, ':');
-
-        {
-            char str[8];
-            sprintf(str, "%02X", (uint32_t)checksum);
-
-            Uart_Puts(scContext.uartId, str);
-        }
-
-        Uart_Putc(scContext.uartId, '\r');
-        Uart_Putc(scContext.uartId, '\n');
-
-        scContext.txBufLen = 0;
-        scContext.txBuf[scContext.txBufLen] = 0;
-
-        return;
+        PrintLog(str);
+        Uart_Puts(scContext.uartId, str);
     }
-
 #endif
 
-    {
-        scContext.txBuf[scContext.txBufLen] = c;
-        ++scContext.txBufLen;
-        scContext.txBuf[scContext.txBufLen] = 0;
-
-        if ((c == '\n') || (scContext.txBufLen >= 2047))
-        {
-            PrintLog("Sc_Tx: ");
-            PrintLog((const char *)scContext.txBuf);
-
-            scContext.txBufLen = 0;
-        }
-    }
-
-    Uart_Putc(scContext.uartId, c);
+    PrintLog("\n");
+    Uart_Puts(scContext.uartId, "\r\n");
 
     scContext.lastScTxTimeInMs = get_time_in_ms();
+
+    recursive_mutex_exit(&scMutex);
 }
 
-void Sc_Puts(const char *buf)
-{
-    if (!Sc_IsInited())
-        return;
-
-    while (*buf != 0)
-    {
-        Sc_Putc(*buf);
-        ++buf;
-    }
-}
-
+// Can only be called from main core
 void Sc_SendCommand(volatile struct Sc_SendCommandContext_s *ctx)
 {
-    if (!Sc_IsInited())
-        return;
+    Sc_CheckIsInited();
+
+    recursive_mutex_enter_blocking(&scMutex);
 
     ctx->done = false;
     sync();
@@ -570,4 +668,8 @@ void Sc_SendCommand(volatile struct Sc_SendCommandContext_s *ctx)
         if ((t2 - t1) > 2000)
             watchdog_reboot(0, 0, 0);
     }
+
+    //scContext.sendCommandCtx = NULL;
+
+    recursive_mutex_exit(&scMutex);
 }
