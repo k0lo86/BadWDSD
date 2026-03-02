@@ -49,6 +49,8 @@ You still can't install CFW PUP, so new variant of CFW must be made. This is cal
 
 It is heavily based on **Evilnat PEX CFW**. And will support every feature except: **Dumping eid_root_key and anything that needed it**.
 
+HDD Decryption is **possible** without root key. See **Dumping HDD Key** section
+
 [Cobra](https://github.com/aomsin2526/Cobra-PS3-qCFW) must be active at all times or some feature will not work properly.
 
 # qCFW quirks
@@ -125,7 +127,11 @@ Currently, **Raspberry Pi Pico (RP2040)** and **RP2040-Zero** are supported.
 <details>
   <summary> <b>3000</b> </summary>
 <p>
-<img src="https://github.com/user-attachments/assets/6787886e-58a6-4fe9-877c-7ce4efbf8af7" />
+<img width="1032" height="910" alt="554644994-b3ade08e-a521-4a61-87c8-1783419128bf" src="https://github.com/user-attachments/assets/74037604-95fe-4dec-8e1e-f0a5025e8a7e" />
+
+<img width="664" height="664" alt="554644993-ef1747d8-505d-4ab8-98fb-f77911ead2d4" src="https://github.com/user-attachments/assets/43d21dfd-ed81-47da-8c68-c7869be4abf0" />
+
+<img width="501" height="501" alt="554644995-ec252dea-e781-46e6-9b51-c417dda285dd" src="https://github.com/user-attachments/assets/da1cc758-e856-4a02-9eac-8e6e60db38f1" />
 </p>
 </details>
 
@@ -237,6 +243,30 @@ You can't access syscon the old ways anymore. It must be done through modchip. S
 # NoBT
 
 [See PSX-Place](https://www.psx-place.com/threads/badwdsd-qcfw-hw-flasher-nobt-thread.49625/)
+
+# Dumping HDD Key (XMB)
+
+1. On qCFW, use option **Custom Firmware Tools -> Dump Tools -> Dump HDD Key (qCFW)**
+2. Your console will reboot
+3. After you back to XMB, insert USB drive into **RIGHTMOST** slot
+4. Use **Save HDD Key to USB (qCFW)** option
+5. HDD Key dumped
+
+You can use [PS3HDH](https://www.psx-place.com/resources/ps3-hdd-decryption-helper.1293/) to mount it
+
+<img width="1350" height="749" alt="mstsc_RUKXzMX8lD" src="https://github.com/user-attachments/assets/808f1399-9294-42db-b538-b7c86e05f867" />
+
+# Dumping HDD Key (Syscon)
+
+This method is useful if you can't use XMB for any reason.
+
+This should work as long as you hear triple beeps
+
+1. Use syscon command **"w f03 1"**
+2. Turn on the console
+3. See syscon log for keys
+
+<img width="621" height="254" alt="Termite_Pf3nlky65T" src="https://github.com/user-attachments/assets/0ed1a1ab-ab60-46e8-b8b4-11292da7da79" />
 
 # eMMC Support?
 
