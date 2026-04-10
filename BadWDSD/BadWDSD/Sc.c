@@ -30,6 +30,17 @@ void Sc_RxFn()
             sync();
         }
 
+        bool xdrInitFail = false;
+
+        if (strstr(scContext.rxBuf, "XDR Link not"))
+            xdrInitFail = true;
+
+        if (xdrInitFail)
+        {
+            scContext.xdrInitFail = true;
+            sync();
+        }
+
         bool success = false;
 
         if (strstr(scContext.rxBuf, "BadWDSD"))
@@ -181,6 +192,7 @@ void Sc_Init()
     scContext.rxBuf[0] = 0;
 
     scContext.trigger = false;
+    scContext.xdrInitFail = false;
 
     scContext.success = false;
     scContext.shutdownSuccess = false;
@@ -516,6 +528,16 @@ void Sc_ClearTrigger()
     scContext.trigger = false;
 }
 
+bool Sc_GetXdrInitFail()
+{
+    return scContext.xdrInitFail;
+}
+
+void Sc_ClearXdrInitFail()
+{
+    scContext.xdrInitFail = false;
+}
+
 bool Sc_GetSuccess()
 {
     return scContext.success;
@@ -592,7 +614,7 @@ void Sc_Puts(const char *cmd)
     if (cmd_StrLenToSend == 0)
         return;
 
-    if (cmd_StrLenToSend >= (SC_TXBUF_SIZE - 1))
+    if (cmd_StrLenToSend > (SC_TXBUF_SIZE - 1))
     {
         PrintLog("cmd_StrLenToSend too big!\n");
         dead();
