@@ -42,8 +42,28 @@ void Watchdog()
                 }
             }
 
-            busy_wait_ms(500);
-            Sc_Puts("powersw");
+            {
+                Sc_ClearBringupSuccess();
+                busy_wait_ms(500);
+
+                uint64_t bt1 = get_time_in_ms();
+                uint64_t lastPowerswTime = 0;
+
+                while (!Sc_GetBringupSuccess())
+                {
+                    if ((get_time_in_ms() - lastPowerswTime) > 500)
+                    {
+                        Sc_Puts("powersw");
+                        lastPowerswTime = get_time_in_ms();
+                    }
+
+                    uint64_t bt2 = get_time_in_ms();
+
+                    if ((bt2 - bt1) > 10000)
+                        return;
+                }
+            }
+
             break;
         }
     }
